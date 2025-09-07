@@ -591,8 +591,8 @@ def detect_voltage_events_enhanced_threshold(data_segment, sampling_rate_hz=5, t
 def plot_events_with_arrows_global_fixed(raw_segment, processed_segment, events_list, 
                                         segment_name, toxin, trial_string, sampling_rate_hz=5, 
                                         save_dir_event_plots=None, max_channels_plot=10,
-                                        threshold_multiplier=2.5, show_thresholds=True, use_global_threshold=True,
-                                        use_fixed_std=False, fixed_std_value=None, data_type="voltage"):
+                                        threshold_multiplier=2.5, show_thresholds=True, use_global_threshold=False,
+                                        use_fixed_std=True, fixed_std_value=None, data_type="voltage"):
     """
     FIXED: Plot timeseries with CORRECT baseline visualization (per-channel baselines + global threshold)
     """
@@ -603,8 +603,6 @@ def plot_events_with_arrows_global_fixed(raw_segment, processed_segment, events_
     n_channels, n_timepoints = raw_segment.shape
     time_axis = np.arange(n_timepoints) / sampling_rate_hz
     
-    # Limit channels for clarity
-    #n_channels_plot = min(n_channels, max_channels_plot)
     n_channels_plot = n_channels
     
     fig, ax = plt.subplots(figsize=(10, 20))
