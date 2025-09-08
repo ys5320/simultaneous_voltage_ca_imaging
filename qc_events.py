@@ -26,7 +26,7 @@ class SimpleEventQC:
         self.qc_decisions = {}
         
     def find_trials_from_metadata(self):
-        """Find complete trials"""
+        """Find complete trials with improved file detection"""
         print("Finding trials from metadata...")
         complete_trials = {}
         
@@ -37,11 +37,23 @@ class SimpleEventQC:
             
             if not trial_pipeline_dir.exists() or not trial_video_dir.exists():
                 continue
+
+            # Separate events files from timeseries files
+            all_voltage_files = list(trial_pipeline_dir.glob("*voltage*.csv"))
+            all_calcium_files = list(trial_pipeline_dir.glob("*calcium*.csv"))
             
-            voltage_events = list(trial_pipeline_dir.glob("events_voltage_*_filtered.csv"))
-            calcium_events = list(trial_pipeline_dir.glob("events_calcium_*_filtered.csv"))
-            voltage_timeseries = list(trial_pipeline_dir.glob("*_voltage_*.csv"))
-            calcium_timeseries = list(trial_pipeline_dir.glob("*_calcium_*.csv"))
+            voltage_events = [f for f in all_voltage_files if 'events_' in f.name]
+            calcium_events = [f for f in all_calcium_files if 'events_' in f.name]
+            voltage_timeseries = [f for f in all_voltage_files if 'events_' not in f.name]
+            calcium_timeseries = [f for f in all_calcium_files if 'events_' not in f.name]
+            
+            '''
+            print(f"DEBUG: {trial_string} file classification:")
+            print(f"  Voltage events: {[f.name for f in voltage_events]}")
+            print(f"  Calcium events: {[f.name for f in calcium_events]}")
+            print(f"  Voltage timeseries: {[f.name for f in voltage_timeseries]}")
+            print(f"  Calcium timeseries: {[f.name for f in calcium_timeseries]}")
+            '''
             
             segment_videos = {
                 'voltage': {
@@ -55,7 +67,14 @@ class SimpleEventQC:
                     'full': trial_video_dir / "enhanced_calcium_video.avi"
                 }
             }
-            
+            '''
+            print(f"  Expected pre voltage: {segment_videos['voltage']['pre']} - exists: {segment_videos['voltage']['pre'].exists()}")
+            print(f"  Expected post voltage: {segment_videos['voltage']['post']} - exists: {segment_videos['voltage']['post'].exists()}")
+            print(f"  Expected full voltage: {segment_videos['voltage']['full']} - exists: {segment_videos['voltage']['full'].exists()}")
+            print(f"  Expected pre calcium: {segment_videos['calcium']['pre']} - exists: {segment_videos['calcium']['pre'].exists()}")
+            print(f"  Expected post calcium: {segment_videos['calcium']['post']} - exists: {segment_videos['calcium']['post'].exists()}")
+            print(f"  Expected full calcium: {segment_videos['calcium']['full']} - exists: {segment_videos['calcium']['full'].exists()}")
+            '''
             has_voltage_video = (segment_videos['voltage']['full'].exists() or 
                                (segment_videos['voltage']['pre'].exists() and segment_videos['voltage']['post'].exists()))
             has_calcium_video = (segment_videos['calcium']['full'].exists() or 
@@ -146,7 +165,15 @@ class SimpleEventQC:
             return None
             
         timeseries_df = pd.read_csv(timeseries_file)
-        
+        '''
+         # ADD THIS DETAILED DEBUG:
+        print(f"DEBUG: Loading {timeseries_file}")
+        print(f"DEBUG: DataFrame shape: {timeseries_df.shape}")
+        print(f"DEBUG: Column names (with quotes): {[repr(col) for col in timeseries_df.columns]}")
+        print(f"DEBUG: Looking for 'cell_x' and 'cell_y'")
+        print(f"DEBUG: 'cell_x' in columns: {'cell_x' in timeseries_df.columns}")
+        print(f"DEBUG: 'cell_y' in columns: {'cell_y' in timeseries_df.columns}")
+        '''
         # Fix coordinates if needed
         cell_positions = timeseries_df[['cell_x', 'cell_y']].copy()
         if self.swap_coordinates:
@@ -193,11 +220,37 @@ class SimpleEventQC:
         return None
     
     def get_best_timeseries_for_segment(self, timeseries_files, segment_name):
-        """Get best timeseries file"""
-        for ts_file in timeseries_files:
-            if segment_name in ts_file.name.lower():
+        """Get best timeseries file - improved to avoid events files"""
+        
+        print(f"DEBUG: Looking for {segment_name} timeseries in: {[f.name for f in timeseries_files]}")
+        
+        # Filter out events files (they contain 'events_' in the name)
+        actual_timeseries_files = [f for f in timeseries_files if 'events_' not in f.name.lower()]
+        
+        print(f"DEBUG: After filtering out events files: {[f.name for f in actual_timeseries_files]}")
+        
+        # First, try to find exact segment match
+        for ts_file in actual_timeseries_files:
+            filename = ts_file.name.lower()
+            if f'{segment_name}_' in filename:
+                print(f"DEBUG: Found exact match: {ts_file.name}")
                 return ts_file
-        return timeseries_files[0] if timeseries_files else None
+        
+        # For post-only trials looking for 'post', accept files with 'post_' in name
+        if segment_name == 'post':
+            for ts_file in actual_timeseries_files:
+                if 'post_' in ts_file.name.lower():
+                    print(f"DEBUG: Found post file: {ts_file.name}")
+                    return ts_file
+        
+        # Last resort: use first non-events file
+        if actual_timeseries_files:
+            fallback_file = actual_timeseries_files[0]
+            print(f"DEBUG: Using fallback file: {fallback_file.name}")
+            return fallback_file
+        
+        print(f"DEBUG: No timeseries files found for {segment_name}")
+        return None
     
     def load_existing_timeseries_plot(self, segment_data):
         """Load pre-generated timeseries plot from event_detection_plots folder"""
@@ -895,19 +948,32 @@ class SimpleEventQC:
         }
     
     def is_trial_complete(self, trial_string):
-        """Check if trial has all 4 final QC files"""
+        """Check if trial has all required final QC files (handles post-only trials)"""
         trial_dir = self.base_results_dir / trial_string
         
-        required_files = [
-            trial_dir / f"events_voltage_pre_{trial_string}_simple_QC_final.csv",
-            trial_dir / f"events_voltage_post_{trial_string}_simple_QC_final.csv",
-            trial_dir / f"events_calcium_pre_{trial_string}_simple_QC_final.csv",
-            trial_dir / f"events_calcium_post_{trial_string}_simple_QC_final.csv"
-        ]
+        # Detect available segments for this trial (reuse the logic)
+        trial_files = self.find_trials_from_metadata().get(trial_string)
+        if not trial_files:
+            return False
         
-        # Check if all 4 files exist
+        available_segments = self.detect_available_segments(trial_string, trial_files)
+        
+        # Check for required files based on available segments
+        required_files = []
+        for segment in available_segments:
+            for data_type in ['voltage', 'calcium']:
+                required_files.append(
+                    trial_dir / f"events_{data_type}_{segment}_{trial_string}_simple_QC_final.csv"
+                )
+        '''
+        print(f"DEBUG: Checking completion for {trial_string}")
+        print(f"  Available segments: {available_segments}")
+        print(f"  Required files: {[f.name for f in required_files]}")
+        print(f"  Files exist: {[f.exists() for f in required_files]}")
+        '''
+        # Check if all required files exist
         return all(file.exists() for file in required_files)
-
+    
     def apply_single_trial_decisions(self, trial_string):
         """Apply QC decisions for a single completed trial - save 4 separate CSV files"""
         if not self.qc_decisions:
@@ -1031,7 +1097,13 @@ class SimpleEventQC:
             
             trial_completed = True  # Track if all segments for this trial are completed
             
-            for segment_name in ['pre', 'post']:
+            # Detect available segments for this trial
+            available_segments = self.detect_available_segments(trial_string, trial_files)
+            print(f"Available segments for {trial_string}: {available_segments}")
+
+            total_segments_for_trial = len(available_segments) * 2  # voltage + calcium
+
+            for segment_name in available_segments:  # Use detected segments instead of hardcoded ['pre', 'post']
                 for data_type in ['voltage', 'calcium']:
                     segment_count += 1
                     
@@ -1112,6 +1184,32 @@ class SimpleEventQC:
             if apply_now in ['y', 'yes']:
                 self.create_final_toxin_summary()
     
+    def detect_available_segments(self, trial_string, trial_files):
+        """Detect which segments (pre/post) are available for this trial"""
+        available_segments = set()
+        
+        # Check voltage events to see what segments exist
+        if 'voltage_events' in trial_files:
+            voltage_events_df = pd.read_csv(trial_files['voltage_events'])
+            if 'segment' in voltage_events_df.columns:
+                available_segments.update(voltage_events_df['segment'].unique())
+            else:
+                # If no segment column, assume post-only
+                available_segments.add('post')
+        
+        # Also check timeseries files to confirm
+        voltage_timeseries = trial_files.get('voltage_timeseries', [])
+        for ts_file in voltage_timeseries:
+            filename = ts_file.name.lower()
+            if 'pre_' in filename:
+                available_segments.add('pre')
+            elif 'post_' in filename:
+                available_segments.add('post')
+        
+        # Return sorted list for consistency
+        segment_order = ['pre', 'post']
+        return [seg for seg in segment_order if seg in available_segments]
+        
     def save_qc_results(self):
         """Save QC decisions"""
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1302,7 +1400,8 @@ def main():
     df_raw = pd.read_csv(df_file)
     df_filtered = df_raw[df_raw['multi_tif'] > 1]
     df_filtered = df_filtered[df_filtered['use'] == 'y']
-    df_filtered = df_filtered[df_filtered['expt'] == 'TRAM-34_1uM']
+    #df_filtered = df_filtered[df_filtered['expt'] == 'TRAM-34_1uM']
+    df_filtered = df_filtered[df_filtered['expt'].str.contains('TRAM-34_1uM', na=False)]
     df_filtered = df_filtered.reset_index(drop=True)
     
     if len(df_filtered) == 0:
