@@ -209,6 +209,15 @@ def process_single_trial_complete(voltage_file, ca_file, toxin, trial_string,
                 save_segment_data(processed, 'post', toxin, trial_string, 
                                 save_dir_data, cell_positions=cell_positions, 
                                 original_filename=filename, data_type=data_type)
+                
+                # ADD video creation for post only
+                print("=== CREATING POST-ONLY VIDEO ===")
+                try:
+                    create_post_only_videos(
+                        trial_string, original_folder, save_dir_data, sampling_rate_hz=5
+                    )
+                except Exception as e:
+                    print(f"Warning: Could not create post-only videos for {trial_string}: {e}")
             
         else:
             print("=== FULL EXPERIMENT - USING SEGMENTATION ===")
@@ -378,7 +387,67 @@ def create_segment_videos(trial_string, consensus_timepoint, original_folder,
         canf.save_to_avi(calcium_enhanced, calcium_video_file, trial_data_dir)
         
         print(f"  ✓ Created: {voltage_video_file} & {calcium_video_file}")
+ 
+def create_post_only_videos(trial_string, original_folder, trial_data_dir, sampling_rate_hz=5):
+    """
+    Create videos for post-only trials (entire recording as one video)
+    """
+    print(f"=== CREATING POST-ONLY VIDEOS FOR {trial_string} ===")
+    
+    if not original_folder.exists():
+        print(f"  Skipping {original_folder}, does not exist.")
+        return
+
+    # Find and sort .tif files - same as create_segment_videos
+    tif_files = sorted([f for f in os.listdir(original_folder) if f.endswith(".ome.tif")])
+    
+    def custom_sort(filename):
+        if filename.endswith("_Default.ome.tif"):
+            return 0
+        elif filename.endswith("_Default_1.ome.tif"):
+            return 1
+        elif filename.endswith("_Default_2.ome.tif"):
+            return 2
+        return 3
+
+    tif_files.sort(key=custom_sort)
+    
+    if not tif_files:
+        print(f"  No .tif files found in {original_folder}")
+        return
         
+    print(f"  Using TIFF files: {tif_files}")
+    
+    # Load image stack - same as create_segment_videos
+    image_stack = tiff.imread(str(original_folder / tif_files[0]))
+
+    if image_stack.ndim != 3:
+        print(f"  Skipping {original_folder}, no valid images loaded.")
+        return
+        
+    print(f"  Loaded Z-stack shape: {image_stack.shape}")
+    
+    # Deinterleave - same as create_segment_videos
+    voltage_channel = image_stack[::2, :, :]
+    calcium_channel = image_stack[1::2, :, :]
+    print(f"  Deinterleaved shapes: V={voltage_channel.shape}, Ca={calcium_channel.shape}")
+    
+    # For post-only, use the entire recording
+    print(f"  Creating post-only videos: entire recording (frames 0-{voltage_channel.shape[0]-1})")
+    
+    # Apply same enhancement as other video creation
+    voltage_enhanced = np.array([canf.adjust_brightness(frame) for frame in voltage_channel])
+    calcium_enhanced = np.array([canf.adjust_brightness(frame) for frame in calcium_channel])
+    
+    # Save as post videos (since this is post-treatment data)
+    voltage_video_file = f"post_voltage_{trial_string}.avi"
+    calcium_video_file = f"post_calcium_{trial_string}.avi"
+    
+    canf.save_to_avi(voltage_enhanced, voltage_video_file, trial_data_dir)
+    canf.save_to_avi(calcium_enhanced, calcium_video_file, trial_data_dir)
+    
+    print(f"  ✓ Created post-only videos: {voltage_video_file} & {calcium_video_file}")
+           
 def combine_all_events(base_results_dir, data_type="voltage", output_filename=None):
     """
     Combine all individual event CSV files into one master file for each data type

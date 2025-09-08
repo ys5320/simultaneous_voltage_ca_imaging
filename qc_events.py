@@ -77,6 +77,46 @@ class SimpleEventQC:
         
         return complete_trials
     
+    def deduplicate_events(self, events_df):
+        """Remove duplicate events based on key properties"""
+        if len(events_df) == 0:
+            return events_df
+        
+        print(f"Checking for duplicate events in {len(events_df)} events...")
+        
+        # Define columns that make an event unique
+        unique_columns = ['cell_index', 'start_time_sec', 'end_time_sec', 'duration_sec', 'amplitude', 'event_type']
+        
+        # Check if all required columns exist
+        missing_cols = [col for col in unique_columns if col not in events_df.columns]
+        if missing_cols:
+            print(f"Warning: Missing columns for deduplication: {missing_cols}")
+            # Use available columns only
+            unique_columns = [col for col in unique_columns if col in events_df.columns]
+        
+        # Count duplicates before removal
+        duplicate_mask = events_df.duplicated(subset=unique_columns, keep='first')
+        n_duplicates = duplicate_mask.sum()
+        
+        if n_duplicates > 0:
+            print(f"Found {n_duplicates} duplicate events - removing duplicates")
+            
+            # Show some examples of duplicates
+            print("Example duplicates found:")
+            duplicates = events_df[duplicate_mask][unique_columns].head(3)
+            for idx, dup in duplicates.iterrows():
+                print(f"  Cell {dup['cell_index']}: {dup['start_time_sec']:.1f}-{dup['end_time_sec']:.1f}s, "
+                    f"amp={dup.get('amplitude', 'N/A'):.3f}, type={dup['event_type']}")
+            
+            # Remove duplicates (keep first occurrence)
+            deduplicated_df = events_df.drop_duplicates(subset=unique_columns, keep='first').reset_index(drop=True)
+            
+            print(f"Events after deduplication: {len(deduplicated_df)} (removed {n_duplicates} duplicates)")
+            return deduplicated_df
+        else:
+            print("No duplicate events found")
+            return events_df
+    
     def load_segment_data(self, trial_string, trial_files, segment_name, data_type):
         """Load data for a segment - includes timeseries data"""
         # Load events
@@ -87,6 +127,8 @@ class SimpleEventQC:
             events_df = pd.read_csv(trial_files['calcium_events'])
             timeseries_files = trial_files['calcium_timeseries']
         
+        # First deduplicate the entire events dataframe
+        events_df = self.deduplicate_events(events_df)
         # Filter by segment
         if 'segment' in events_df.columns:
             segment_events = events_df[events_df['segment'] == segment_name].reset_index(drop=True)
@@ -333,14 +375,14 @@ class SimpleEventQC:
                                 (0, 255, 0), 3)
                     
                     cv2.imshow('Timeseries Plot', plot_display)
-                    cv2.moveWindow('Timeseries Plot', 50, 50)
+                    cv2.moveWindow('Timeseries Plot', 50, 5)
                 
                 # Resize video for better visibility (2x larger)
                 display_frame = cv2.resize(display_frame, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_LINEAR)
                 cv2.imshow('Trial Overview', display_frame)
-                cv2.moveWindow('Trial Overview', 700, 50)  # Position video to the right
+                cv2.moveWindow('Trial Overview', 700, 5)  # Position video to the right
                 
-                key = cv2.waitKey(20) & 0xFF  # Fast playback (50 FPS)
+                key = cv2.waitKey(1) & 0xFF  # Fast playback 
                 
                 if key == ord('a'):
                     cv2.destroyAllWindows()
@@ -570,21 +612,49 @@ class SimpleEventQC:
                            (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, status_color, 2)
                 cv2.putText(display_frame, f'Frame: {i+1}/{len(frames)} | a=accept, r=reject, s=skip', 
                            (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-                
+                '''
                 # Create updated timeseries plot with current time indicator
                 updated_plot = self.create_full_cell_timeseries_plot(event, segment_data, current_time)
                 
                 if updated_plot is not None:
                     cv2.imshow('Full Cell Timeseries', updated_plot)
-                    cv2.moveWindow('Full Cell Timeseries', 50, 50)
-                
+                    cv2.moveWindow('Full Cell Timeseries', 50, 5)
+                '''
+                # Load static timeseries plot once (like in trial overview)
+                if i == 0:  # Only load once at the beginning
+                    static_plot = self.load_existing_timeseries_plot(segment_data)
+                    if static_plot is not None:
+                        # Apply same resize logic as in trial overview
+                        max_height = 1000
+                        height, width = static_plot.shape[:2]
+                        if height > max_height:
+                            scale_factor = max_height / height
+                            new_width = int(width * scale_factor)
+                            static_plot = cv2.resize(static_plot, (new_width, max_height))
+
+                # Show static plot with moving vertical line (like trial overview)
+                if 'static_plot' in locals() and static_plot is not None:
+                    plot_display = static_plot.copy()
+                    
+                    # Calculate x-position for time indicator line (same as trial overview)
+                    plot_width = plot_display.shape[1]
+                    trial_duration = total_frames / segment_data['sampling_rate']
+                    if trial_duration > 0:
+                        x_position = int((current_time / trial_duration) * plot_width)
+                        # Draw vertical line in bright green
+                        cv2.line(plot_display, (x_position, 0), (x_position, plot_display.shape[0]), 
+                                (0, 255, 0), 3)
+                    
+                    cv2.imshow('Static Timeseries', plot_display)
+                    cv2.moveWindow('Static Timeseries', 50, 5)
+
                 # Resize video for better visibility (2x larger)
                 display_frame = cv2.resize(display_frame, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_LINEAR)
                 # Position video window next to timeseries
                 cv2.imshow('Event Video', display_frame)
-                cv2.moveWindow('Event Video', 700, 50)
+                cv2.moveWindow('Event Video', 700, 5)
                 
-                key = cv2.waitKey(30) & 0xFF  # Fast playback (~33 FPS)
+                key = cv2.waitKey(10) & 0xFF  # Fast playback 
                 
                 # Streamlined controls - make decision during video
                 if key == ord('a'):
@@ -824,6 +894,94 @@ class SimpleEventQC:
             'rejected_events': rejected_events
         }
     
+    def is_trial_complete(self, trial_string):
+        """Check if trial has all 4 final QC files"""
+        trial_dir = self.base_results_dir / trial_string
+        
+        required_files = [
+            trial_dir / f"events_voltage_pre_{trial_string}_simple_QC_final.csv",
+            trial_dir / f"events_voltage_post_{trial_string}_simple_QC_final.csv",
+            trial_dir / f"events_calcium_pre_{trial_string}_simple_QC_final.csv",
+            trial_dir / f"events_calcium_post_{trial_string}_simple_QC_final.csv"
+        ]
+        
+        # Check if all 4 files exist
+        return all(file.exists() for file in required_files)
+
+    def apply_single_trial_decisions(self, trial_string):
+        """Apply QC decisions for a single completed trial - save 4 separate CSV files"""
+        if not self.qc_decisions:
+            return
+        
+        # Filter decisions for this trial only
+        trial_decisions = {k: v for k, v in self.qc_decisions.items() 
+                        if v['trial_string'] == trial_string}
+        
+        if not trial_decisions:
+            return
+        
+        print(f"Applying QC decisions for {trial_string}...")
+        
+        trial_dir = self.base_results_dir / trial_string
+        
+        # Process each data type
+        for data_type in ['voltage', 'calcium']:
+            source_files = list(trial_dir.glob(f"events_{data_type}_*_filtered.csv"))
+            if not source_files:
+                continue
+                
+            source_file = source_files[0]
+            events_df = pd.read_csv(source_file)
+            
+            # Process each segment separately to create individual files
+            for segment in ['pre', 'post']:
+                qc_key = f"{trial_string}_{segment}_{data_type}"
+                if qc_key in trial_decisions:
+                    decision_info = trial_decisions[qc_key]
+                    decision = decision_info['decision']
+                    rejected_events = decision_info.get('rejected_events', [])
+                    
+                    if 'segment' in events_df.columns:
+                        segment_events = events_df[events_df['segment'] == segment]
+                    else:
+                        segment_events = events_df
+                    
+                    if decision == 'accept':
+                        final_segment_events = segment_events
+                    elif decision == 'partial_reject':
+                        final_segment_events = segment_events[~segment_events.index.isin(rejected_events)]
+                    elif decision == 'reject':
+                        final_segment_events = segment_events.iloc[0:0].copy()
+                    
+                    # Save separate file for each segment
+                    segment_file = trial_dir / f"events_{data_type}_{segment}_{trial_string}_simple_QC_final.csv"
+                    final_segment_events.to_csv(segment_file, index=False)
+                    print(f"✓ Created: {segment_file.name}")
+    
+    def create_final_toxin_summary(self):
+        """Create final toxin summary from all completed trials"""
+        # Get all completed trials
+        completed_trials = [t for t in self.find_trials_from_metadata().keys() 
+                           if self.is_trial_complete(t)]
+        
+        if not completed_trials:
+            print("No completed trials found for summary")
+            return
+        
+        # Create combined summary using existing method logic
+        individual_trial_results = {}
+        
+        for trial_string in completed_trials:
+            individual_trial_results[trial_string] = {}
+            trial_dir = self.base_results_dir / trial_string
+            
+            for data_type in ['voltage', 'calcium']:
+                final_file = trial_dir / f"events_{data_type}_{trial_string}_simple_QC_final.csv"
+                if final_file.exists():
+                    individual_trial_results[trial_string][data_type] = pd.read_csv(final_file)
+        
+        self.create_toxin_summary_files(individual_trial_results)
+    
     def run_simple_qc(self):
         """Main QC workflow with trial overview"""
         print("ENHANCED EVENT QC TOOL - WITH PRE-GENERATED TIMESERIES PLOTS")
@@ -840,23 +998,53 @@ class SimpleEventQC:
         
         print(f"Found {len(trials)} complete trials")
         
-        segment_count = 0
-        total_segments = len(trials) * 2 * 2
+        # Check for already completed trials
+        completed_trials = []
+        remaining_trials = []
         
-        for trial_string, trial_files in trials.items():
+        for trial_string in trials.keys():
+            if self.is_trial_complete(trial_string):
+                completed_trials.append(trial_string)
+            else:
+                remaining_trials.append(trial_string)
+        
+        print(f"Already completed: {len(completed_trials)} trials")
+        print(f"Remaining to QC: {len(remaining_trials)} trials")
+        
+        if completed_trials:
+            print("Completed trials:")
+            for trial in completed_trials:
+                print(f"  ✓ {trial}")
+        
+        if not remaining_trials:
+            print("All trials already completed!")
+            return
+        
+        segment_count = 0
+        total_segments = len(remaining_trials) * 2 * 2
+        
+        for trial_string in remaining_trials:
+            trial_files = trials[trial_string]
+            print(f"\n{'='*80}")
+            print(f"PROCESSING TRIAL: {trial_string}")
+            print(f"{'='*80}")
+            
+            trial_completed = True  # Track if all segments for this trial are completed
+            
             for segment_name in ['pre', 'post']:
                 for data_type in ['voltage', 'calcium']:
                     segment_count += 1
                     
-                    print(f"\n{'='*80}")
+                    print(f"\n{'='*60}")
                     print(f"SEGMENT {segment_count}/{total_segments}")
-                    print(f"{'='*80}")
+                    print(f"{'='*60}")
                     
                     try:
                         segment_data = self.load_segment_data(trial_string, trial_files, segment_name, data_type)
                         
                         if segment_data is None:
                             print(f"Failed to load {trial_string} {segment_name} {data_type}")
+                            trial_completed = False
                             continue
                         
                         # Debug: Check if timeseries data was loaded
@@ -882,14 +1070,47 @@ class SimpleEventQC:
                         print(f"Error processing segment: {e}")
                         import traceback
                         traceback.print_exc()
+                        trial_completed = False
                         continue
+            
+            # After completing all segments for this trial, create checkpoint
+            if trial_completed:
+                print(f"\n{'='*60}")
+                print(f"COMPLETED TRIAL: {trial_string}")
+                print(f"{'='*60}")
+                
+                # Apply decisions immediately for this trial
+                self.apply_single_trial_decisions(trial_string)
+                
+                # Save overall QC results
+                self.save_qc_results()
+                
+                print(f"✓ Checkpoint saved for {trial_string}")
+            else:
+                print(f"✗ Trial {trial_string} incomplete - will retry next time")
         
-        # Save results
-        self.save_qc_results()
+        print("\n" + "="*80)
+        print("QC SESSION COMPLETE")
+        print("="*80)
         
-        apply_now = input("\nApply QC decisions to create final event files? (y/n): ").strip().lower()
-        if apply_now in ['y', 'yes']:
-            self.apply_qc_decisions()
+        # Final summary
+        final_completed = [t for t in trials.keys() if self.is_trial_complete(t)]
+        final_remaining = [t for t in trials.keys() if not self.is_trial_complete(t)]
+        
+        print(f"Total completed trials: {len(final_completed)}")
+        print(f"Total remaining trials: {len(final_remaining)}")
+        
+        if final_remaining:
+            print("Still need to QC:")
+            for trial in final_remaining:
+                print(f"  - {trial}")
+        else:
+            print("🎉 ALL TRIALS COMPLETED!")
+            
+            # Create final toxin summary
+            apply_now = input("\nCreate final toxin summary files? (y/n): ").strip().lower()
+            if apply_now in ['y', 'yes']:
+                self.create_final_toxin_summary()
     
     def save_qc_results(self):
         """Save QC decisions"""

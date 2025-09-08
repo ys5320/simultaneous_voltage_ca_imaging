@@ -20,7 +20,7 @@ def determine_toxin_from_trial(trial_string, filename):
     filename_lower = filename.lower()
     trial_lower = trial_string.lower()
     
-    if 'l-15' in filename_lower in filename_lower:
+    if 'l-15' in filename_lower:
         return 'L-15_control'
     elif 'ani9' in filename_lower:
         return 'Ani9_10uM'
