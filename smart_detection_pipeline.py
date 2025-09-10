@@ -14,7 +14,12 @@ from infusion_detection import (
     detrend
 )
 
-
+# Configuration for non-drug experiments that should be treated as post-only
+NON_DRUG_EXPERIMENT_KEYWORDS = [
+    'sirna_kcnn4',
+    'sirna_negative_control',
+    'condition',
+]
 def determine_toxin_from_trial(trial_string, filename):
     """Determine toxin type from trial string or filename"""
     filename_lower = filename.lower()
@@ -196,9 +201,9 @@ def apply_segment_processing(segment_data, apply_mean_center=True, apply_detrend
         # No Gaussian filtering
         return processed_data, None
 
-def detect_file_type_and_datapoints(df):
+def detect_file_type_and_datapoints(df, trial_row=None):
     """
-    Detect if this is a full experiment or post-only file
+    Detect if this is a full experiment, post-only, or interrupted experiment
     Returns: (file_type, n_datapoints)
     """
     # Find where data columns start (after 'cell_y')
@@ -206,16 +211,27 @@ def detect_file_type_and_datapoints(df):
         cell_y_idx = df.columns.get_loc('cell_y')
         data_columns = df.columns[cell_y_idx + 1:]
     else:
-        # Fallback: assume data columns are numeric
         data_columns = [col for col in df.columns if str(col).isdigit()]
     
     n_datapoints = len(data_columns)
     
-    # Determine file type based on datapoint count
-    if n_datapoints >= 9000:  # Around 10,000
-        file_type = "full_experiment"
-    elif n_datapoints >= 4000:  # Around 5,000
+    # Check experiment type from trial metadata
+    is_explicit_post = False
+    is_non_drug_experiment = False
+    
+    if trial_row is not None and hasattr(trial_row, 'expt'):
+        expt_lower = trial_row.expt.lower()
+        is_explicit_post = '_post' in expt_lower
+        # Check against configurable list of non-drug experiments
+        is_non_drug_experiment = any(keyword in expt_lower for keyword in NON_DRUG_EXPERIMENT_KEYWORDS)
+    
+    # Determine file type
+    if is_explicit_post or is_non_drug_experiment:
         file_type = "post_only"
+    elif n_datapoints >= 9000:
+        file_type = "full_experiment"
+    elif n_datapoints >= 5000:
+        file_type = "interrupted_experiment"
     else:
         file_type = "unknown"
     
@@ -587,6 +603,34 @@ def detect_voltage_events_enhanced_threshold(data_segment, sampling_rate_hz=5, t
     
     return events_list, data_segment, threshold_data
 
+def detect_experiment_type(df, trial_row=None):
+    """Enhanced experiment type detection"""
+    # Find where data columns start
+    if 'cell_y' in df.columns:
+        cell_y_idx = df.columns.get_loc('cell_y')
+        data_columns = df.columns[cell_y_idx + 1:]
+    else:
+        data_columns = [col for col in df.columns if str(col).isdigit()]
+    
+    n_datapoints = len(data_columns)
+    
+    # Check for explicit post designation
+    has_post_designation = False
+    if trial_row is not None:
+        expt = trial_row.expt
+        has_post_designation = '_post' in expt.lower()
+    
+    if has_post_designation:
+        experiment_type = "post_only"
+    elif n_datapoints >= 9000:
+        experiment_type = "full_experiment"
+    elif n_datapoints >= 5000:
+        experiment_type = "interrupted_post_drug"
+    else:
+        experiment_type = "pre_only"
+    
+    print(f"Detected: {experiment_type} with {n_datapoints} datapoints")
+    return experiment_type, n_datapoints
 
 def plot_events_with_arrows_global_fixed(raw_segment, processed_segment, events_list, 
                                         segment_name, toxin, trial_string, sampling_rate_hz=5, 

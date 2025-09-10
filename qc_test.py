@@ -55,7 +55,14 @@ class SimpleEventQC:
                     'full': trial_video_dir / "enhanced_calcium_video.avi"
                 }
             }
-            
+            '''
+            print(f"  Expected pre voltage: {segment_videos['voltage']['pre']} - exists: {segment_videos['voltage']['pre'].exists()}")
+            print(f"  Expected post voltage: {segment_videos['voltage']['post']} - exists: {segment_videos['voltage']['post'].exists()}")
+            print(f"  Expected full voltage: {segment_videos['voltage']['full']} - exists: {segment_videos['voltage']['full'].exists()}")
+            print(f"  Expected pre calcium: {segment_videos['calcium']['pre']} - exists: {segment_videos['calcium']['pre'].exists()}")
+            print(f"  Expected post calcium: {segment_videos['calcium']['post']} - exists: {segment_videos['calcium']['post'].exists()}")
+            print(f"  Expected full calcium: {segment_videos['calcium']['full']} - exists: {segment_videos['calcium']['full'].exists()}")
+            '''
             has_voltage_video = (segment_videos['voltage']['full'].exists() or 
                                (segment_videos['voltage']['pre'].exists() and segment_videos['voltage']['post'].exists()))
             has_calcium_video = (segment_videos['calcium']['full'].exists() or 
@@ -146,7 +153,15 @@ class SimpleEventQC:
             return None
             
         timeseries_df = pd.read_csv(timeseries_file)
-        
+        '''
+         # ADD THIS DETAILED DEBUG:
+        print(f"DEBUG: Loading {timeseries_file}")
+        print(f"DEBUG: DataFrame shape: {timeseries_df.shape}")
+        print(f"DEBUG: Column names (with quotes): {[repr(col) for col in timeseries_df.columns]}")
+        print(f"DEBUG: Looking for 'cell_x' and 'cell_y'")
+        print(f"DEBUG: 'cell_x' in columns: {'cell_x' in timeseries_df.columns}")
+        print(f"DEBUG: 'cell_y' in columns: {'cell_y' in timeseries_df.columns}")
+        '''
         # Fix coordinates if needed
         cell_positions = timeseries_df[['cell_x', 'cell_y']].copy()
         if self.swap_coordinates:
@@ -895,19 +910,34 @@ class SimpleEventQC:
         }
     
     def is_trial_complete(self, trial_string):
-        """Check if trial has all 4 final QC files"""
+        """Check if trial has all required final QC files (handles post-only trials)"""
         trial_dir = self.base_results_dir / trial_string
         
-        required_files = [
-            trial_dir / f"events_voltage_pre_{trial_string}_simple_QC_final.csv",
-            trial_dir / f"events_voltage_post_{trial_string}_simple_QC_final.csv",
-            trial_dir / f"events_calcium_pre_{trial_string}_simple_QC_final.csv",
-            trial_dir / f"events_calcium_post_{trial_string}_simple_QC_final.csv"
-        ]
+        # Check what segments actually exist for this trial
+        voltage_events = list(trial_dir.glob("events_voltage_*_filtered.csv"))
+        calcium_events = list(trial_dir.glob("events_calcium_*_filtered.csv"))
         
-        # Check if all 4 files exist
+        if not voltage_events or not calcium_events:
+            return False
+        
+        # Read one file to see what segments exist
+        voltage_df = pd.read_csv(voltage_events[0])
+        if 'segment' in voltage_df.columns:
+            available_segments = voltage_df['segment'].unique()
+        else:
+            # If no segment column, assume post-only
+            available_segments = ['post']
+        
+        # Check for required files based on available segments
+        required_files = []
+        for segment in available_segments:
+            for data_type in ['voltage', 'calcium']:
+                required_files.append(
+                    trial_dir / f"events_{data_type}_{segment}_{trial_string}_simple_QC_final.csv"
+                )
+        
+        # Check if all required files exist
         return all(file.exists() for file in required_files)
-
     def apply_single_trial_decisions(self, trial_string):
         """Apply QC decisions for a single completed trial - save 4 separate CSV files"""
         if not self.qc_decisions:
@@ -1302,7 +1332,8 @@ def main():
     df_raw = pd.read_csv(df_file)
     df_filtered = df_raw[df_raw['multi_tif'] > 1]
     df_filtered = df_filtered[df_filtered['use'] == 'y']
-    df_filtered = df_filtered[df_filtered['expt'] == 'TRAM-34_1uM']
+    #df_filtered = df_filtered[df_filtered['expt'] == 'TRAM-34_1uM']
+    df_filtered = df_filtered[df_filtered['expt'].str.contains('TRAM-34_1uM', na=False)]
     df_filtered = df_filtered.reset_index(drop=True)
     
     if len(df_filtered) == 0:

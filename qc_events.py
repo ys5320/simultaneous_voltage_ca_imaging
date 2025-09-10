@@ -1023,30 +1023,7 @@ class SimpleEventQC:
                     segment_file = trial_dir / f"events_{data_type}_{segment}_{trial_string}_simple_QC_final.csv"
                     final_segment_events.to_csv(segment_file, index=False)
                     print(f"✓ Created: {segment_file.name}")
-    
-    def create_final_toxin_summary(self):
-        """Create final toxin summary from all completed trials"""
-        # Get all completed trials
-        completed_trials = [t for t in self.find_trials_from_metadata().keys() 
-                           if self.is_trial_complete(t)]
-        
-        if not completed_trials:
-            print("No completed trials found for summary")
-            return
-        
-        # Create combined summary using existing method logic
-        individual_trial_results = {}
-        
-        for trial_string in completed_trials:
-            individual_trial_results[trial_string] = {}
-            trial_dir = self.base_results_dir / trial_string
-            
-            for data_type in ['voltage', 'calcium']:
-                final_file = trial_dir / f"events_{data_type}_{trial_string}_simple_QC_final.csv"
-                if final_file.exists():
-                    individual_trial_results[trial_string][data_type] = pd.read_csv(final_file)
-        
-        self.create_toxin_summary_files(individual_trial_results)
+
     
     def run_simple_qc(self):
         """Main QC workflow with trial overview"""
@@ -1084,6 +1061,10 @@ class SimpleEventQC:
         
         if not remaining_trials:
             print("All trials already completed!")
+            # Create final toxin summary
+            apply_now = input("\nCreate final toxin summary files? (y/n): ").strip().lower()
+            if apply_now in ['y', 'yes']:
+                self.create_toxin_summary_files()
             return
         
         segment_count = 0
@@ -1182,7 +1163,7 @@ class SimpleEventQC:
             # Create final toxin summary
             apply_now = input("\nCreate final toxin summary files? (y/n): ").strip().lower()
             if apply_now in ['y', 'yes']:
-                self.create_final_toxin_summary()
+                self.create_toxin_summary_files()
     
     def detect_available_segments(self, trial_string, trial_files):
         """Detect which segments (pre/post) are available for this trial"""
@@ -1213,7 +1194,13 @@ class SimpleEventQC:
     def save_qc_results(self):
         """Save QC decisions"""
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        results_file = self.base_results_dir / f"simple_qc_decisions_{timestamp}.json"
+        
+        # Create qc_checkpoint directory
+        checkpoint_dir = self.base_results_dir / "qc_checkpoint"
+        checkpoint_dir.mkdir(exist_ok=True)
+        
+        # Save to checkpoint directory
+        results_file = checkpoint_dir / f"simple_qc_decisions_{timestamp}.json"
         
         with open(results_file, 'w') as f:
             json.dump(self.qc_decisions, f, indent=2, default=str)
@@ -1310,69 +1297,77 @@ class SimpleEventQC:
         
         print("QC complete!")
 
-    def create_toxin_summary_files(self, individual_trial_results):
-        """Create combined summary files for all trials of this toxin"""
-        print("\nCreating toxin-level summary files...")
+    def create_toxin_summary_files(self):
+        """Create separate toxin summary files preserving segment structure"""
+        print("\nCreating toxin-specific summary files...")
         
-        # Determine toxin name from metadata
-        if len(self.df_metadata) > 0:
-            toxin = self.df_metadata['expt'].iloc[0]
-        else:
-            toxin = "unknown_toxin"
+        # Create events_df directory
+        events_df_dir = self.base_results_dir / 'events_df'
+        events_df_dir.mkdir(exist_ok=True)
         
-        print(f"Toxin: {toxin}")
+        # Get all completed trials
+        completed_trials = [t for t in self.find_trials_from_metadata().keys() 
+                        if self.is_trial_complete(t)]
         
-        # Combine all trials for each data type
-        for data_type in ['voltage', 'calcium']:
-            all_events_list = []
+        if not completed_trials:
+            print("No completed trials found for summary")
+            return
+        
+        # Find all unique toxins
+        toxins_in_data = set()
+        for trial_string in completed_trials:
+            trial_row = self.df_metadata[self.df_metadata['trial_string'] == trial_string]
+            if len(trial_row) > 0:
+                toxins_in_data.add(trial_row.iloc[0]['expt'])
+        
+        print(f"Found toxins: {list(toxins_in_data)}")
+        
+        # For each toxin, create separate files for each data_type and segment combination
+        for toxin in toxins_in_data:
+            print(f"\n--- Creating files for: {toxin} ---")
             
-            for trial_string, trial_results in individual_trial_results.items():
-                if data_type in trial_results:
-                    trial_events = trial_results[data_type].copy()
-                    
-                    # Add trial identifier to each event
-                    trial_events['trial_string'] = trial_string
-                    
-                    # Add trial metadata if available
-                    trial_row = self.df_metadata[self.df_metadata['trial_string'] == trial_string]
-                    if len(trial_row) > 0:
-                        trial_info = trial_row.iloc[0]
-                        trial_events['date'] = trial_info.get('date', '')
-                        trial_events['area'] = trial_info.get('area', '')
-                        trial_events['toxin'] = trial_info.get('expt', toxin)
-                        trial_events['concentration'] = trial_info.get('concentration', '')
-                    
-                    all_events_list.append(trial_events)
+            # Get trials for this toxin
+            toxin_trials = []
+            for trial_string in completed_trials:
+                trial_row = self.df_metadata[self.df_metadata['trial_string'] == trial_string]
+                if len(trial_row) > 0 and trial_row.iloc[0]['expt'] == toxin:
+                    toxin_trials.append(trial_string)
             
-            if all_events_list:
-                # Combine all trials
-                combined_events = pd.concat(all_events_list, ignore_index=True)
-                
-                # Save toxin summary file
-                summary_file = self.base_results_dir / f"events_{data_type}_{toxin}_QC_final.csv"
-                combined_events.to_csv(summary_file, index=False)
-                
-                print(f"✓ TOXIN SUMMARY: {summary_file.name}")
-                print(f"   Total events: {len(combined_events)}")
-                print(f"   Trials included: {len(all_events_list)}")
-                
-                # Print summary statistics
-                if len(combined_events) > 0:
-                    print(f"   Events by trial:")
-                    trial_counts = combined_events.groupby('trial_string').size()
-                    for trial, count in trial_counts.items():
-                        print(f"     {trial}: {count} events")
+            # For each data_type and segment combination
+            for data_type in ['voltage', 'calcium']:
+                for segment in ['pre', 'post']:
+                    all_events_list = []
                     
-                    if 'segment' in combined_events.columns:
-                        print(f"   Events by segment:")
-                        segment_counts = combined_events.groupby('segment').size()
-                        for segment, count in segment_counts.items():
-                            print(f"     {segment}: {count} events")
-            else:
-                print(f"✗ No {data_type} events found across trials")
+                    for trial_string in toxin_trials:
+                        trial_dir = self.base_results_dir / trial_string
+                        segment_file = trial_dir / f"events_{data_type}_{segment}_{trial_string}_simple_QC_final.csv"
+                        
+                        if segment_file.exists():
+                            events_df = pd.read_csv(segment_file)
+                            
+                            # Add trial metadata
+                            trial_row = self.df_metadata[self.df_metadata['trial_string'] == trial_string]
+                            if len(trial_row) > 0:
+                                trial_info = trial_row.iloc[0]
+                                events_df['trial_string'] = trial_string
+                                events_df['date'] = trial_info.get('date', '')
+                                events_df['area'] = trial_info.get('area', '')
+                                events_df['toxin'] = trial_info.get('expt', toxin)
+                                events_df['concentration'] = trial_info.get('concentration', '')
+                            
+                            all_events_list.append(events_df)
+                    
+                    if all_events_list:
+                        # Combine all trials for this toxin/data_type/segment
+                        combined_events = pd.concat(all_events_list, ignore_index=True)
+                        
+                        # Save toxin-specific file in events_df subdirectory
+                        summary_file = events_df_dir / f"events_{data_type}_{segment}_{toxin}_QC_final.csv"
+                        combined_events.to_csv(summary_file, index=False)
+                        
+                        print(f"✓ {summary_file.name}: {len(combined_events)} events from {len(all_events_list)} trials")
         
-        print(f"\nToxin summary files created for: {toxin}")
-
+        print(f"\nToxin-specific summary files created for: {list(toxins_in_data)}")
 
 def main():
     """Main function"""
@@ -1401,7 +1396,7 @@ def main():
     df_filtered = df_raw[df_raw['multi_tif'] > 1]
     df_filtered = df_filtered[df_filtered['use'] == 'y']
     #df_filtered = df_filtered[df_filtered['expt'] == 'TRAM-34_1uM']
-    df_filtered = df_filtered[df_filtered['expt'].str.contains('TRAM-34_1uM', na=False)]
+    df_filtered = df_filtered[df_filtered['expt'].str.contains('Dantrolene', na=False)]
     df_filtered = df_filtered.reset_index(drop=True)
     
     if len(df_filtered) == 0:

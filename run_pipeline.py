@@ -20,6 +20,17 @@ from smart_detection_pipeline import (
     process_events_for_segments_with_enhanced_filter
 )
 
+def create_unique_trial_identifier(trial_row):
+    """Create unique identifier that distinguishes experiment types"""
+    base_string = trial_row.trial_string
+    expt = trial_row.expt
+    
+    # If experiment name contains 'post', add it to identifier
+    if '_post' in expt.lower():
+        return f"{base_string}_post"
+    else:
+        return base_string
+
 def determine_toxin_from_trial(trial_string, filename):
     """Determine toxin type from trial string or filename"""
     filename_lower = filename.lower()
@@ -90,11 +101,12 @@ def run_pipeline(df_file, top_dir, data_dir, HPC_num=None):
         print(f"\nProcessing pipeline for trial: {trial_string}")
         
         # Find corresponding timeseries files for this trial
+        # REPLACE WITH the simple original version:
         voltage_files = list(data_dir.glob(f"*{trial_string}*_voltage_transfected*.csv"))
         calcium_files = list(data_dir.glob(f"*{trial_string}*_ca_transfected*.csv"))
-        
+
         if not voltage_files or not calcium_files:
-            print(f"  ⚠ Missing timeseries files for {trial_string}, skipping")
+            print(f"  ⚠ Missing timeseries files for {trial_string} ({'post' if '_post' in trial_row.expt.lower() else 'full'}), skipping")
             continue
         
         voltage_file = voltage_files[0]
@@ -103,16 +115,17 @@ def run_pipeline(df_file, top_dir, data_dir, HPC_num=None):
         # Determine toxin
         toxin = determine_toxin_from_trial(trial_string, voltage_file.name)
         
-        # Create trial-specific directory
+        # Create trial-specific directory using unique name
         trial_data_dir = Path(base_results_dir, trial_string)
         trial_data_dir.mkdir(parents=True, exist_ok=True)
         
         try:
             # Run the complete processing pipeline
             success = process_single_trial_complete(
-                voltage_file, calcium_file, toxin, trial_string,
-                original_folder, save_dir_plots, trial_data_dir, 
+                voltage_file, calcium_file, toxin, trial_string,  # Keep original trial_string for file matching
+                original_folder, save_dir_plots, trial_data_dir,  # Use unique directory
                 trial_data_dir, save_dir_event_plots,
+                trial_row=trial_row,
                 **PROCESSING_OPTIONS
             )
             
@@ -130,6 +143,7 @@ def run_pipeline(df_file, top_dir, data_dir, HPC_num=None):
 def process_single_trial_complete(voltage_file, ca_file, toxin, trial_string, 
                                 original_folder, save_dir_plots, save_dir_data, 
                                 save_dir_events, save_dir_event_plots,
+                                trial_row=None,  # ADD THIS PARAMETER
                                 apply_mean_center=True, apply_detrend=True, 
                                 apply_gaussian=False, gaussian_sigma=3,
                                 apply_normalization=True,
@@ -148,9 +162,9 @@ def process_single_trial_complete(voltage_file, ca_file, toxin, trial_string,
         voltage_data = pd.read_csv(voltage_file)
         ca_data = pd.read_csv(ca_file)
         
-        # Detect file types
-        voltage_file_type, voltage_n_datapoints = detect_file_type_and_datapoints(voltage_data)
-        ca_file_type, ca_n_datapoints = detect_file_type_and_datapoints(ca_data)
+        # Detect file types - PASS trial_row for better detection
+        voltage_file_type, voltage_n_datapoints = detect_file_type_and_datapoints(voltage_data, trial_row)
+        ca_file_type, ca_n_datapoints = detect_file_type_and_datapoints(ca_data, trial_row)
         
         # Extract cell positions and IDs
         voltage_cell_positions = voltage_data[['cell_id', 'cell_x', 'cell_y']].copy()
@@ -209,20 +223,20 @@ def process_single_trial_complete(voltage_file, ca_file, toxin, trial_string,
                 save_segment_data(processed, 'post', toxin, trial_string, 
                                 save_dir_data, cell_positions=cell_positions, 
                                 original_filename=filename, data_type=data_type)
-                
-                # ADD video creation for post only
-                print("=== CREATING POST-ONLY VIDEO ===")
-                try:
-                    create_post_only_videos(
-                        trial_string, original_folder, save_dir_data, sampling_rate_hz=5
-                    )
-                except Exception as e:
-                    print(f"Warning: Could not create post-only videos for {trial_string}: {e}")
             
-        else:
-            print("=== FULL EXPERIMENT - USING SEGMENTATION ===")
+            # Create post-only videos
+            print("=== CREATING POST-ONLY VIDEO ===")
+            try:
+                create_post_only_videos(
+                    trial_string, original_folder, save_dir_data, sampling_rate_hz=5
+                )
+            except Exception as e:
+                print(f"Warning: Could not create post-only videos for {trial_string}: {e}")
             
-            # Apply high-pass filtering
+        elif voltage_file_type == "interrupted_experiment":
+            print("=== INTERRUPTED EXPERIMENT - TRYING CONSENSUS DETECTION ===")
+            
+            # Apply high-pass filtering first
             voltage_highpass = apply_highpass_to_full_timeseries(
                 voltage_timeseries, sampling_rate_hz=5, cutoff_freq=0.01,
                 apply_normalization=apply_normalization, data_type="voltage"
@@ -233,10 +247,124 @@ def process_single_trial_complete(voltage_file, ca_file, toxin, trial_string,
                 apply_normalization=apply_normalization, data_type="calcium"
             )
             
+            # Try to find consensus timepoint
+            consensus_timepoint = find_consensus_timepoint_from_voltage(
+                voltage_highpass,
+                sampling_rate_hz=5,
+                time_window=(3000, 4500),  # Adjusted window for shorter recordings
+                detection_method='zscore',
+                consensus_method='mode'
+            )
+            
+            if consensus_timepoint is not None:
+                print(f"Found consensus at {consensus_timepoint} - proceeding with segmentation")
+                
+                # Create segment videos
+                create_segment_videos(
+                    trial_string, consensus_timepoint, original_folder, 
+                    save_dir_data, sampling_rate_hz=5
+                )
+                
+                # Segment both datasets using same consensus timepoint
+                voltage_segments_raw = segment_highpass_timeseries(voltage_highpass, consensus_timepoint, data_type="voltage")
+                ca_segments_raw = segment_highpass_timeseries(ca_highpass, consensus_timepoint, data_type="calcium")
+                voltage_segments_processed = {}
+                ca_segments_processed = {}
+                
+                # Process each segment for both modalities
+                for segment_name in ['pre', 'post']:
+                    for data_type, segments_raw, cell_positions, filename in [
+                        ("voltage", voltage_segments_raw, voltage_cell_positions, voltage_file.name),
+                        ("calcium", ca_segments_raw, ca_cell_positions, ca_file.name)
+                    ]:
+                        if segments_raw[segment_name] is not None:
+                            print(f"\n=== PROCESSING {data_type.upper()} {segment_name.upper()} SEGMENT ===")
+                            
+                            processed, non_gaussian = apply_segment_processing(
+                                segments_raw[segment_name],
+                                apply_mean_center=apply_mean_center,
+                                apply_detrend=apply_detrend,
+                                apply_gaussian=apply_gaussian,
+                                gaussian_sigma=gaussian_sigma,
+                                data_type=data_type
+                            )
+                            
+                            if data_type == "voltage":
+                                voltage_segments_processed[segment_name] = processed
+                            else:
+                                ca_segments_processed[segment_name] = processed
+                            
+                            save_segment_data(processed, segment_name, toxin, trial_string, 
+                                            save_dir_data, cell_positions=cell_positions, 
+                                            original_filename=filename, data_type=data_type)
+            else:
+                print("No consensus found - treating as pre-only experiment")
+                
+                # Process entire recording as 'pre' segment
+                voltage_segments_raw = {'pre': voltage_highpass}
+                ca_segments_raw = {'pre': ca_highpass}
+                voltage_segments_processed = {}
+                ca_segments_processed = {}
+                
+                # Process pre segment for both modalities
+                for data_type, segments_raw, cell_positions, filename in [
+                    ("voltage", voltage_segments_raw, voltage_cell_positions, voltage_file.name),
+                    ("calcium", ca_segments_raw, ca_cell_positions, ca_file.name)
+                ]:
+                    processed, non_gaussian = apply_segment_processing(
+                        segments_raw['pre'],
+                        apply_mean_center=apply_mean_center,
+                        apply_detrend=apply_detrend,
+                        apply_gaussian=apply_gaussian,
+                        gaussian_sigma=gaussian_sigma,
+                        data_type=data_type
+                    )
+                    
+                    if data_type == "voltage":
+                        voltage_segments_processed['pre'] = processed
+                    else:
+                        ca_segments_processed['pre'] = processed
+                    
+                    save_segment_data(processed, 'pre', toxin, trial_string, 
+                                    save_dir_data, cell_positions=cell_positions, 
+                                    original_filename=filename, data_type=data_type)
+                
+                # Create pre-only videos
+                print("=== CREATING PRE-ONLY VIDEO ===")
+                try:
+                    create_pre_only_videos(
+                        trial_string, original_folder, save_dir_data, sampling_rate_hz=5
+                    )
+                except Exception as e:
+                    print(f"Warning: Could not create pre-only videos for {trial_string}: {e}")
+
+        else:
+            print("=== FULL EXPERIMENT - USING SEGMENTATION ===")
+            
+            # Original pipeline: normalization → consensus → segmentation → processing
+            voltage_highpass = apply_highpass_to_full_timeseries(
+                voltage_timeseries, 
+                sampling_rate_hz=5, 
+                cutoff_freq=0.01,
+                apply_normalization=apply_normalization,
+                data_type="voltage"
+            )
+            
+            ca_highpass = apply_highpass_to_full_timeseries(
+                ca_timeseries, 
+                sampling_rate_hz=5, 
+                cutoff_freq=0.01,
+                apply_normalization=apply_normalization,
+                data_type="calcium"
+            )
+            
             # Find consensus timepoint using VOLTAGE data
             consensus_timepoint = find_consensus_timepoint_from_voltage(
-                voltage_highpass, sampling_rate_hz=5, time_window=(4500, 5500),
-                detection_method='zscore', consensus_method='mode'
+                voltage_highpass,
+                sampling_rate_hz=5,
+                time_window=(4500, 5500),
+                detection_method='zscore',
+                consensus_method='mode'
             )
             
             if consensus_timepoint is None:
@@ -244,45 +372,57 @@ def process_single_trial_complete(voltage_file, ca_file, toxin, trial_string,
                 return False
             
             # Create segment videos
-            create_segment_videos(
-                trial_string, consensus_timepoint, original_folder, 
-                save_dir_data, sampling_rate_hz=5
-            )
+            if consensus_timepoint is not None:
+                create_segment_videos(trial_string, consensus_timepoint, original_folder, 
+                                    save_dir_data, sampling_rate_hz=5)
             
-            # Segment both datasets using same consensus timepoint
+            # Segment both datasets using the same consensus timepoint
             voltage_segments_raw = segment_highpass_timeseries(voltage_highpass, consensus_timepoint, data_type="voltage")
             ca_segments_raw = segment_highpass_timeseries(ca_highpass, consensus_timepoint, data_type="calcium")
             voltage_segments_processed = {}
             ca_segments_processed = {}
             
-            # Process each segment for both modalities
+            # Process each segment (pre and post)
             for segment_name in ['pre', 'post']:
-                for data_type, segments_raw, cell_positions, filename in [
-                    ("voltage", voltage_segments_raw, voltage_cell_positions, voltage_file.name),
-                    ("calcium", ca_segments_raw, ca_cell_positions, ca_file.name)
-                ]:
-                    if segments_raw[segment_name] is not None:
-                        print(f"\n=== PROCESSING {data_type.upper()} {segment_name.upper()} SEGMENT ===")
-                        
-                        processed, non_gaussian = apply_segment_processing(
-                            segments_raw[segment_name],
-                            apply_mean_center=apply_mean_center,
-                            apply_detrend=apply_detrend,
-                            apply_gaussian=apply_gaussian,
-                            gaussian_sigma=gaussian_sigma,
-                            data_type=data_type
-                        )
-                        
-                        if data_type == "voltage":
-                            voltage_segments_processed[segment_name] = processed
-                        else:
-                            ca_segments_processed[segment_name] = processed
-                        
-                        save_segment_data(processed, segment_name, toxin, trial_string, 
-                                        save_dir_data, cell_positions=cell_positions, 
-                                        original_filename=filename, data_type=data_type)
+                # Process voltage segments
+                if voltage_segments_raw[segment_name] is not None:
+                    print(f"\n=== PROCESSING VOLTAGE {segment_name.upper()} SEGMENT ===")
+                    
+                    voltage_processed, voltage_non_gaussian = apply_segment_processing(
+                        voltage_segments_raw[segment_name],
+                        apply_mean_center=apply_mean_center,
+                        apply_detrend=apply_detrend,
+                        apply_gaussian=apply_gaussian,
+                        gaussian_sigma=gaussian_sigma,
+                        data_type="voltage"
+                    )
+                    
+                    voltage_segments_processed[segment_name] = voltage_processed
+                    
+                    save_segment_data(voltage_processed, segment_name, toxin, trial_string, 
+                                     save_dir_data, cell_positions=voltage_cell_positions, 
+                                     original_filename=voltage_file.name, data_type="voltage")
+                
+                # Process calcium segments
+                if ca_segments_raw[segment_name] is not None:
+                    print(f"\n=== PROCESSING CALCIUM {segment_name.upper()} SEGMENT ===")
+                    
+                    ca_processed, ca_non_gaussian = apply_segment_processing(
+                        ca_segments_raw[segment_name],
+                        apply_mean_center=apply_mean_center,
+                        apply_detrend=apply_detrend,
+                        apply_gaussian=apply_gaussian,
+                        gaussian_sigma=gaussian_sigma,
+                        data_type="calcium"
+                    )
+                    
+                    ca_segments_processed[segment_name] = ca_processed
+                    
+                    save_segment_data(ca_processed, segment_name, toxin, trial_string, 
+                                     save_dir_data, cell_positions=ca_cell_positions, 
+                                     original_filename=ca_file.name, data_type="calcium")
         
-        # Event detection for both modalities
+        # Event detection (same for all cases)
         if enable_event_detection:
             print(f"\n=== VOLTAGE EVENT DETECTION ===")
             voltage_events_df, voltage_excluded = process_events_for_segments_with_enhanced_filter(

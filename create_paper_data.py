@@ -25,7 +25,8 @@ if HPC:
     df_data = pd.read_csv(df)
     df_data = df_data[df_data['multi_tif']>1]
     df_data = df_data[df_data['use'] == 'y']
-    toxins = ['ATP', 'TRAM-34', 'L-15', 'Dantrolene', 'dantrolene','Ani9']
+    #toxins = ['ATP', 'TRAM-34', 'L-15', 'Dantrolene', 'dantrolene','Ani9']
+    toxins = ['siRNA']
     df_data = df_data[df_data['expt'].apply(lambda x: any(k in x for k in toxins))]
 
     df_data = df_data.reset_index(drop=True)  # Add this line
