@@ -29,11 +29,12 @@ class SimpleEventQC:
         """Find complete trials with improved file detection"""
         print("Finding trials from metadata...")
         complete_trials = {}
+        incomplete_trials = []
         
         for idx, trial_row in self.df_metadata.iterrows():
             trial_string = trial_row.trial_string
             trial_pipeline_dir = self.base_results_dir / trial_string
-            trial_video_dir = self.video_results_dir / trial_string
+            trial_video_dir = self.base_results_dir / trial_string
             
             if not trial_pipeline_dir.exists() or not trial_video_dir.exists():
                 continue
@@ -59,12 +60,12 @@ class SimpleEventQC:
                 'voltage': {
                     'pre': trial_pipeline_dir / f"pre_voltage_{trial_string}.avi",
                     'post': trial_pipeline_dir / f"post_voltage_{trial_string}.avi",
-                    'full': trial_video_dir / "enhanced_voltage_video.avi"
+                    'full': trial_pipeline_dir / "enhanced_voltage_video.avi"
                 },
                 'calcium': {
                     'pre': trial_pipeline_dir / f"pre_calcium_{trial_string}.avi", 
                     'post': trial_pipeline_dir / f"post_calcium_{trial_string}.avi",
-                    'full': trial_video_dir / "enhanced_calcium_video.avi"
+                    'full': trial_pipeline_dir / "enhanced_calcium_video.avi"
                 }
             }
             '''
@@ -93,6 +94,24 @@ class SimpleEventQC:
                     'trial_row': trial_row
                 }
                 print(f"  ✓ {trial_string}")
+            
+            else:
+            # Add this debugging
+                missing_items = []
+                if not voltage_events: missing_items.append("voltage_events")
+                if not calcium_events: missing_items.append("calcium_events") 
+                if not voltage_timeseries: missing_items.append("voltage_timeseries")
+                if not calcium_timeseries: missing_items.append("calcium_timeseries")
+                if not has_voltage_video: missing_items.append("voltage_video")
+                if not has_calcium_video: missing_items.append("calcium_video")
+                
+                incomplete_trials.append((trial_string, f"Missing: {', '.join(missing_items)}"))
+        
+        # Add this at the end
+        if incomplete_trials:
+            print(f"\nIncomplete trials ({len(incomplete_trials)}):")
+            for trial, reason in incomplete_trials:
+                print(f"  ✗ {trial}: {reason}")
         
         return complete_trials
     
@@ -889,16 +908,17 @@ class SimpleEventQC:
                 
                 if decision != 'skip':
                     event_decisions[event_idx] = decision
-                
-                # Automatically proceed to next event after accept/reject
+            
                 current_event += 1
-                
-                # Only ask for navigation if user wants to go back or quit
+                # Enhanced navigation with cell-level bulk options
                 if current_event < len(events_df):
+                    current_cell = event['cell_index']
                     print(f"\nAutomatically proceeding to next event ({current_event + 1}/{len(events_df)})")
                     print("Press Enter to continue, or type:")
                     print("  p - Go back to previous event")
                     print("  q - Quit this segment")
+                    print(f"  y - Accept ALL remaining events for cell {current_cell}")
+                    print(f"  n - Reject ALL remaining events for cell {current_cell}")
                     
                     next_choice = input("Choice (or Enter): ").strip().lower()
                     
@@ -906,6 +926,34 @@ class SimpleEventQC:
                         current_event = max(0, current_event - 1)
                     elif next_choice == 'q':
                         break
+                    elif next_choice == 'y':
+                        # Accept all remaining events for this cell
+                        count = 0
+                        last_cell_event = current_event - 1  # Track last event of this cell
+                        for idx in range(current_event, len(events_df)):
+                            future_event = events_df.iloc[idx]
+                            if future_event['cell_index'] == current_cell:
+                                future_event_idx = events_df.index[idx]
+                                event_decisions[future_event_idx] = 'accept'
+                                count += 1
+                                last_cell_event = idx
+                        print(f"✓ Accepted {count} remaining events for cell {current_cell}")
+                        # Skip to next cell
+                        current_event = last_cell_event + 1
+                    elif next_choice == 'n':
+                        # Reject all remaining events for this cell
+                        count = 0
+                        last_cell_event = current_event - 1  # Track last event of this cell
+                        for idx in range(current_event, len(events_df)):
+                            future_event = events_df.iloc[idx]
+                            if future_event['cell_index'] == current_cell:
+                                future_event_idx = events_df.index[idx]
+                                event_decisions[future_event_idx] = 'reject'
+                                count += 1
+                                last_cell_event = idx
+                        print(f"✗ Rejected {count} remaining events for cell {current_cell}")
+                        # Skip to next cell
+                        current_event = last_cell_event + 1
                     # Otherwise continue automatically (Enter or any other input)
         
         # Process decisions
@@ -1033,6 +1081,7 @@ class SimpleEventQC:
         print("STEP 2: Detailed event QC (shows FULL CELL timeseries with video sync)")
         print("="*70)
         
+        # Call find_trials_from_metadata() only ONCE
         trials = self.find_trials_from_metadata()
         
         if not trials:
@@ -1041,26 +1090,43 @@ class SimpleEventQC:
         
         print(f"Found {len(trials)} complete trials")
         
-        # Check for already completed trials
+        # Check completion for ALL trials in metadata, not just complete ones
+        all_metadata_trials = self.df_metadata['trial_string'].tolist()
         completed_trials = []
         remaining_trials = []
+        incomplete_trials = []
         
-        for trial_string in trials.keys():
-            if self.is_trial_complete(trial_string):
-                completed_trials.append(trial_string)
-            else:
-                remaining_trials.append(trial_string)
+        for trial_string in all_metadata_trials:
+            if trial_string in trials:  # Trial has all required files
+                if self.is_trial_complete(trial_string):
+                    completed_trials.append(trial_string)
+                else:
+                    remaining_trials.append(trial_string)
+            else:  # Trial is missing some required files
+                incomplete_trials.append(trial_string)
         
         print(f"Already completed: {len(completed_trials)} trials")
         print(f"Remaining to QC: {len(remaining_trials)} trials")
+        print(f"Incomplete (missing files): {len(incomplete_trials)} trials")
         
         if completed_trials:
             print("Completed trials:")
             for trial in completed_trials:
                 print(f"  ✓ {trial}")
         
+        if incomplete_trials:
+            print("Incomplete trials (missing required files):")
+            for trial in incomplete_trials:
+                print(f"  ✗ {trial}")
+                # Add debugging to show what's missing
+                self.debug_missing_files(trial)
+        
         if not remaining_trials:
-            print("All trials already completed!")
+            if incomplete_trials:
+                print(f"\nAll processable trials completed! {len(incomplete_trials)} trials have missing files.")
+            else:
+                print("All trials already completed!")
+            
             # Create final toxin summary
             apply_now = input("\nCreate final toxin summary files? (y/n): ").strip().lower()
             if apply_now in ['y', 'yes']:
@@ -1071,7 +1137,7 @@ class SimpleEventQC:
         total_segments = len(remaining_trials) * 2 * 2
         
         for trial_string in remaining_trials:
-            trial_files = trials[trial_string]
+            trial_files = trials[trial_string]  # This should exist since we filtered above
             print(f"\n{'='*80}")
             print(f"PROCESSING TRIAL: {trial_string}")
             print(f"{'='*80}")
@@ -1164,6 +1230,36 @@ class SimpleEventQC:
             apply_now = input("\nCreate final toxin summary files? (y/n): ").strip().lower()
             if apply_now in ['y', 'yes']:
                 self.create_toxin_summary_files()
+
+    def debug_missing_files(self, trial_string):
+        """Debug what files are missing for an incomplete trial"""
+        trial_pipeline_dir = self.base_results_dir / trial_string
+        trial_video_dir = self.base_results_dir / trial_string
+        
+        print(f"    Debugging {trial_string}:")
+        print(f"    Pipeline dir exists: {trial_pipeline_dir.exists()}")
+        print(f"    Video dir exists: {trial_video_dir.exists()}")
+        
+        if trial_pipeline_dir.exists():
+            voltage_files = list(trial_pipeline_dir.glob("*voltage*.csv"))
+            calcium_files = list(trial_pipeline_dir.glob("*calcium*.csv"))
+            print(f"    Voltage files: {[f.name for f in voltage_files]}")
+            print(f"    Calcium files: {[f.name for f in calcium_files]}")
+            
+            # Check for videos
+            voltage_videos = {
+                'pre': trial_pipeline_dir / f"pre_voltage_{trial_string}.avi",
+                'post': trial_pipeline_dir / f"post_voltage_{trial_string}.avi",
+                'full': trial_pipeline_dir / "enhanced_voltage_video.avi"
+            }
+            calcium_videos = {
+                'pre': trial_pipeline_dir / f"pre_calcium_{trial_string}.avi",
+                'post': trial_pipeline_dir / f"post_calcium_{trial_string}.avi", 
+                'full': trial_pipeline_dir / "enhanced_calcium_video.avi"
+            }
+            
+            print(f"    Voltage videos: {[(k, v.exists()) for k, v in voltage_videos.items()]}")
+            print(f"    Calcium videos: {[(k, v.exists()) for k, v in calcium_videos.items()]}")
     
     def detect_available_segments(self, trial_string, trial_files):
         """Detect which segments (pre/post) are available for this trial"""
@@ -1385,7 +1481,7 @@ def main():
         df_file = Path(top_dir, 'analysis', 'dataframes', f'long_acqs_{cell_line}_all_before_{date}.csv')
     else:
         top_dir = Path(r"R:\home\firefly_link\Calcium_Voltage_Imaging", f'{cell_line}')
-        df_file = Path(top_dir, 'analysis', 'dataframes', f'long_acqs_{cell_line}_all_before_{date}.csv')
+        df_file = Path(top_dir, 'analysis', 'dataframes', f'MDA_MB_468_dataframe_tc_extracted.csv')
     
     # Load metadata
     if not df_file.exists():
@@ -1394,9 +1490,9 @@ def main():
     
     df_raw = pd.read_csv(df_file)
     df_filtered = df_raw[df_raw['multi_tif'] > 1]
-    df_filtered = df_filtered[df_filtered['use'] == 'y']
+    df_filtered = df_filtered[df_filtered['use'] != 'n']
     #df_filtered = df_filtered[df_filtered['expt'] == 'TRAM-34_1uM']
-    df_filtered = df_filtered[df_filtered['expt'].str.contains('Dantrolene', na=False)]
+    df_filtered = df_filtered[df_filtered['expt'].str.contains('Ca_free', na=False)]
     df_filtered = df_filtered.reset_index(drop=True)
     
     if len(df_filtered) == 0:

@@ -15,22 +15,22 @@ if "ys5320" in str(home):
     HPC_num = (
         int(sys.argv[1]) - 1
     )  # allows running on HPC with data parallelism 
-    date = '20250827'
-    df = Path(top_dir,'analysis', 'dataframes',f'long_acqs_{cell_line}_all_before_{date}.csv')
+    date = '20250902'
+    df = Path(top_dir,'analysis', 'dataframes',f'MDA_MB_468_segmented_results2.csv')
 
-    save_dir = Path(top_dir,'analysis', 'results_profiles')
+    save_dir = Path(top_dir,'analysis', 'results_pipeline')
 
 HPC = True
 if HPC:
     df_data = pd.read_csv(df)
     df_data = df_data[df_data['multi_tif']>1]
-    df_data = df_data[df_data['use'] == 'y']
-    #toxins = ['ATP', 'TRAM-34', 'L-15', 'Dantrolene', 'dantrolene','Ani9']
-    toxins = ['siRNA']
+    df_data = df_data[df_data['use'] != 'n']
+    toxins = ['ATP', 'TRAM-34', 'L-15', 'Dantrolene', 'dantrolene','Ani9','siRNA_negative','siRNA_kcnn4','PPADS','YM58483','Thapsigargin','heparin','4AP','Ca_free','DMSO']
+    toxins = ['Nifedipine','condition','A01']
     df_data = df_data[df_data['expt'].apply(lambda x: any(k in x for k in toxins))]
 
-    df_data = df_data.reset_index(drop=True)  # Add this line
-    # In create_paper_data.py, add this after filtering:
+    df_data = df_data.reset_index(drop=True)  
+    
     print("Original path:", df_data.iloc[0]['folder'])
     df_data['folder'] = df_data['folder'].str.replace('/user/be320/', '/user/ys5320/')
     print("Fixed path:", df_data.iloc[0]['folder'])
@@ -39,6 +39,6 @@ if HPC:
     make_videos(df_file = df_data, top_dir = top_dir, HPC_num = HPC_num)
     
     from run_pipeline import run_pipeline
-    data_dir = Path(top_dir.parent.parent, 'ca_voltage_imaging_working', 'results')
+    data_dir = Path(top_dir.parent.parent, 'ca_voltage_imaging_working', 'results_2')
     run_pipeline(df_file = df_data, top_dir = top_dir, data_dir = data_dir, HPC_num = HPC_num)
     

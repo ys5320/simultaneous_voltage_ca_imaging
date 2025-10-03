@@ -11,8 +11,10 @@ from smart_detection_pipeline import (
     apply_highpass_to_full_timeseries,
     find_consensus_timepoint_from_voltage,
     segment_highpass_timeseries,
+    segment_original_timeseries,
     apply_segment_processing,
     save_segment_data,
+    save_raw_segment_data,
     detect_voltage_events_enhanced_threshold,
     plot_events_with_arrows_global_fixed,
     filter_simultaneous_events,
@@ -198,6 +200,9 @@ def process_single_trial_complete(voltage_file, ca_file, toxin, trial_string,
             # Create single segment
             voltage_segments_raw = {'post': voltage_highpass}
             ca_segments_raw = {'post': ca_highpass}
+            # For post-only, create truly raw segments (entire recording as 'post')
+            voltage_segments_truly_raw = {'post': voltage_timeseries.values}
+            ca_segments_truly_raw = {'post': ca_timeseries.values}
             voltage_segments_processed = {}
             ca_segments_processed = {}
             
@@ -223,6 +228,16 @@ def process_single_trial_complete(voltage_file, ca_file, toxin, trial_string,
                 save_segment_data(processed, 'post', toxin, trial_string, 
                                 save_dir_data, cell_positions=cell_positions, 
                                 original_filename=filename, data_type=data_type)
+                
+                # Save truly raw (unfiltered) segment data
+                if data_type == "voltage":
+                    save_raw_segment_data(voltage_segments_truly_raw['post'], 'post', toxin, trial_string, 
+                                        save_dir_data, cell_positions=cell_positions, 
+                                        original_filename=filename, data_type=data_type)
+                else:  # calcium
+                    save_raw_segment_data(ca_segments_truly_raw['post'], 'post', toxin, trial_string, 
+                                        save_dir_data, cell_positions=cell_positions, 
+                                        original_filename=filename, data_type=data_type)
             
             # Create post-only videos
             print("=== CREATING POST-ONLY VIDEO ===")
@@ -268,6 +283,9 @@ def process_single_trial_complete(voltage_file, ca_file, toxin, trial_string,
                 # Segment both datasets using same consensus timepoint
                 voltage_segments_raw = segment_highpass_timeseries(voltage_highpass, consensus_timepoint, data_type="voltage")
                 ca_segments_raw = segment_highpass_timeseries(ca_highpass, consensus_timepoint, data_type="calcium")
+                # Segment the original unfiltered data at same consensus timepoint  
+                voltage_segments_truly_raw = segment_original_timeseries(voltage_timeseries, consensus_timepoint)
+                ca_segments_truly_raw = segment_original_timeseries(ca_timeseries, consensus_timepoint)
                 voltage_segments_processed = {}
                 ca_segments_processed = {}
                 
@@ -297,12 +315,25 @@ def process_single_trial_complete(voltage_file, ca_file, toxin, trial_string,
                             save_segment_data(processed, segment_name, toxin, trial_string, 
                                             save_dir_data, cell_positions=cell_positions, 
                                             original_filename=filename, data_type=data_type)
+                            # Save truly raw (unfiltered) segment data
+                            if data_type == "voltage":
+                                save_raw_segment_data(voltage_segments_truly_raw[segment_name], segment_name, toxin, trial_string, 
+                                                    save_dir_data, cell_positions=cell_positions, 
+                                                    original_filename=filename, data_type=data_type)
+                            else:  # calcium
+                                save_raw_segment_data(ca_segments_truly_raw[segment_name], segment_name, toxin, trial_string, 
+                                                    save_dir_data, cell_positions=cell_positions, 
+                                                    original_filename=filename, data_type=data_type)
+            
             else:
                 print("No consensus found - treating as pre-only experiment")
                 
                 # Process entire recording as 'pre' segment
                 voltage_segments_raw = {'pre': voltage_highpass}
                 ca_segments_raw = {'pre': ca_highpass}
+                # For pre-only, create truly raw segments (entire recording as 'pre') 
+                voltage_segments_truly_raw = {'pre': voltage_timeseries.values}
+                ca_segments_truly_raw = {'pre': ca_timeseries.values}
                 voltage_segments_processed = {}
                 ca_segments_processed = {}
                 
@@ -328,6 +359,15 @@ def process_single_trial_complete(voltage_file, ca_file, toxin, trial_string,
                     save_segment_data(processed, 'pre', toxin, trial_string, 
                                     save_dir_data, cell_positions=cell_positions, 
                                     original_filename=filename, data_type=data_type)
+                    # Save truly raw (unfiltered) segment data
+                    if data_type == "voltage":
+                        save_raw_segment_data(voltage_segments_truly_raw['pre'], 'pre', toxin, trial_string, 
+                                            save_dir_data, cell_positions=cell_positions, 
+                                            original_filename=filename, data_type=data_type)
+                    else:  # calcium
+                        save_raw_segment_data(ca_segments_truly_raw['pre'], 'pre', toxin, trial_string, 
+                                            save_dir_data, cell_positions=cell_positions, 
+                                            original_filename=filename, data_type=data_type)
                 
                 # Create pre-only videos
                 print("=== CREATING PRE-ONLY VIDEO ===")
@@ -379,6 +419,9 @@ def process_single_trial_complete(voltage_file, ca_file, toxin, trial_string,
             # Segment both datasets using the same consensus timepoint
             voltage_segments_raw = segment_highpass_timeseries(voltage_highpass, consensus_timepoint, data_type="voltage")
             ca_segments_raw = segment_highpass_timeseries(ca_highpass, consensus_timepoint, data_type="calcium")
+            # Segment the original unfiltered data at same consensus timepoint  
+            voltage_segments_truly_raw = segment_original_timeseries(voltage_timeseries, consensus_timepoint)
+            ca_segments_truly_raw = segment_original_timeseries(ca_timeseries, consensus_timepoint)
             voltage_segments_processed = {}
             ca_segments_processed = {}
             
@@ -402,6 +445,10 @@ def process_single_trial_complete(voltage_file, ca_file, toxin, trial_string,
                     save_segment_data(voltage_processed, segment_name, toxin, trial_string, 
                                      save_dir_data, cell_positions=voltage_cell_positions, 
                                      original_filename=voltage_file.name, data_type="voltage")
+                    save_raw_segment_data(voltage_segments_truly_raw[segment_name], segment_name, toxin, trial_string, 
+                         save_dir_data, cell_positions=voltage_cell_positions, 
+                         original_filename=voltage_file.name, data_type="voltage")
+            
                 
                 # Process calcium segments
                 if ca_segments_raw[segment_name] is not None:
@@ -421,6 +468,11 @@ def process_single_trial_complete(voltage_file, ca_file, toxin, trial_string,
                     save_segment_data(ca_processed, segment_name, toxin, trial_string, 
                                      save_dir_data, cell_positions=ca_cell_positions, 
                                      original_filename=ca_file.name, data_type="calcium")
+                    # Save truly raw (unfiltered) segment data
+                    save_raw_segment_data(ca_segments_truly_raw[segment_name], segment_name, toxin, trial_string, 
+                     save_dir_data, cell_positions=ca_cell_positions,  # CORRECT
+                     original_filename=ca_file.name, data_type='calcium')  # CORRECT
+            
         
         # Event detection (same for all cases)
         if enable_event_detection:

@@ -113,6 +113,26 @@ def find_consensus_timepoint_from_voltage(voltage_highpass_data, sampling_rate_h
     
     return consensus_timepoint
 
+def segment_original_timeseries(timeseries_data, consensus_timepoint):
+    """Segment original unfiltered timeseries data at consensus timepoint"""
+    pre_start = 200
+    pre_end = consensus_timepoint - 200  
+    post_start = consensus_timepoint + 400
+    post_end = timeseries_data.shape[1] - 1
+    
+    segments = {}
+    if pre_start < pre_end and pre_start >= 0:
+        segments['pre'] = timeseries_data.iloc[:, pre_start:pre_end].values
+    else:
+        segments['pre'] = None
+        
+    if post_start < post_end and post_start < timeseries_data.shape[1]:
+        segments['post'] = timeseries_data.iloc[:, post_start:min(post_end, timeseries_data.shape[1]-1)].values  
+    else:
+        segments['post'] = None
+        
+    return segments
+
 def segment_highpass_timeseries(highpass_data, consensus_timepoint, sampling_rate_hz=5, data_type="voltage"):
     """
     Step 3: Segment the high-pass filtered timeseries using consensus timepoint
@@ -237,6 +257,37 @@ def detect_file_type_and_datapoints(df, trial_row=None):
     
     print(f"Detected: {file_type} with {n_datapoints} datapoints")
     return file_type, n_datapoints
+
+def save_raw_segment_data(segment_data, segment_name, toxin, trial_string, save_dir_data, 
+                         cell_positions=None, original_filename=None, data_type="voltage"):
+    """Save raw segment data with _raw suffix"""
+    if segment_data is None:
+        return None
+    
+    if save_dir_data is not None:
+        data_path = Path(save_dir_data) / f"{segment_name}_{data_type}_{toxin}_{trial_string}_raw.csv"
+        data_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Same DataFrame creation logic as save_segment_data
+        if cell_positions is not None and 'cell_id' in cell_positions.columns:
+            df = pd.DataFrame(segment_data, index=cell_positions['cell_id'])
+            df['cell_id'] = cell_positions['cell_id'].values
+            df['cell_x'] = cell_positions['cell_x'].values  
+            df['cell_y'] = cell_positions['cell_y'].values
+            df = df.reset_index(drop=True)
+        else:
+            df = pd.DataFrame(segment_data)
+            if cell_positions is not None:
+                if 'cell_id' in cell_positions.columns:
+                    df['cell_id'] = cell_positions['cell_id'].values
+                df['cell_x'] = cell_positions['cell_x'].values
+                df['cell_y'] = cell_positions['cell_y'].values
+        
+        df.to_csv(data_path, index=False)
+        print(f"  {data_type.capitalize()} RAW data saved to: {data_path}")
+        return data_path
+    
+    return None
 
 def save_segment_data(segment_data, segment_name, toxin, trial_string, save_dir_data, 
                      cell_positions=None, original_filename=None, data_type="voltage"):
@@ -1040,6 +1091,8 @@ def process_events_for_segments_with_enhanced_filter(segments_raw, segments_proc
             
         events_path = Path(save_dir_events) / f"events_{data_type}_{toxin}_{trial_string}_{suffix}_adaptive_filtered.csv"
         events_path.parent.mkdir(parents=True, exist_ok=True)
+        # Remove duplicate events
+        events_df = events_df.drop_duplicates().reset_index(drop=True)
         events_df.to_csv(events_path, index=False)
         print(f"Enhanced filtered {data_type} events saved to: {events_path}")
         

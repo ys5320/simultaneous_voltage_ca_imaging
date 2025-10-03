@@ -262,13 +262,13 @@ def plot_ca_voltage_figure(voltage_img_path, ca_img_path, seg_path, ca_ts_path, 
         ca_trace = ca_data[cell_id]
         ca_normalized = (ca_trace - np.mean(ca_trace)) / np.std(ca_trace)
         ax3.plot(time_axis, ca_normalized + y_offset, 
-                color=color, linewidth=2, label=f'Cell {cell_id} - Ca²⁺')
+                color=color, linewidth=3, label=f'Cell {cell_id} - Ca²⁺')
         
         # Plot voltage trace (offset slightly)
         voltage_trace = voltage_data[cell_id]
         voltage_normalized = (voltage_trace - np.mean(voltage_trace)) / np.std(voltage_trace)
-        ax3.plot(time_axis, voltage_normalized + y_offset + 0.5, 
-                color=color, linewidth=1.5, linestyle='--', alpha=0.8, 
+        ax3.plot(time_axis, voltage_normalized + y_offset, 
+                color=color, linewidth=3,
                 label=f'Cell {cell_id} - Voltage')
         
         # Add cell ID label
@@ -315,7 +315,7 @@ def plot_ca_voltage_figure(voltage_img_path, ca_img_path, seg_path, ca_ts_path, 
         fig.savefig(save_path, dpi=100, bbox_inches='tight', transparent=True)
         # Save EPS version
         eps_path = save_path.with_suffix('.eps')
-        fig.savefig(eps_path, format='eps', bbox_inches='tight', dpi = 100, transparent = True)
+        fig.savefig(eps_path, format='eps', bbox_inches='tight', dpi = 300, transparent = True)
         print(f"Figure saved to: {save_path}")
     
     plt.show()
@@ -327,17 +327,22 @@ def plot_scalebar(ax, x, y, length, height, thickness=2, color='white'):
     ax.add_patch(plt.Rectangle((x, y), length, thickness, 
                               facecolor=color, edgecolor=None))
 
-def plot_segment_timeseries(ca_ts_path, voltage_ts_path, cell_id, 
-                           start_time=420, end_time=500, save_path=None):
+def plot_segment_timeseries(ca_ts_path, voltage_ts_path, ca_raw_path, voltage_raw_path,
+                           cell_id, start_time=420, end_time=500, save_path=None,
+                           ca_scale_bar=0.02, voltage_scale_bar=0.15, gaussian_sigma=3.0):
     """
-    Plot a segment of calcium and voltage timeseries for a specific cell.
+    Plot a segment of calcium and voltage timeseries for a specific cell with raw and filtered traces.
     
     Parameters:
     -----------
     ca_ts_path : str or Path
-        Path to calcium timeseries CSV
+        Path to processed calcium timeseries CSV
     voltage_ts_path : str or Path  
-        Path to voltage timeseries CSV
+        Path to processed voltage timeseries CSV
+    ca_raw_path : str or Path
+        Path to raw calcium timeseries CSV
+    voltage_raw_path : str or Path
+        Path to raw voltage timeseries CSV
     cell_id : int
         Timeseries cell ID (e.g., 278)
     start_time : float
@@ -346,29 +351,50 @@ def plot_segment_timeseries(ca_ts_path, voltage_ts_path, cell_id,
         End time in seconds (default: 500)
     save_path : str or Path
         Base path for saving (will save both PNG and EPS)
+    ca_scale_bar : float
+        Scale bar size for calcium data (default: 0.02)
+    voltage_scale_bar : float
+        Scale bar size for voltage data (default: 0.15)
+    gaussian_sigma : float
+        Sigma for Gaussian filtering (default: 3.0)
     """
+    
+    from scipy import ndimage
     
     print(f"Loading timeseries for cell {cell_id}...")
     
     # Load timeseries data
     ca_df = pd.read_csv(ca_ts_path)
     voltage_df = pd.read_csv(voltage_ts_path)
+    ca_raw_df = pd.read_csv(ca_raw_path)
+    voltage_raw_df = pd.read_csv(voltage_raw_path)
     
     # Find the specific cell
     ca_cell_data = ca_df[ca_df['cell_id'] == cell_id]
     voltage_cell_data = voltage_df[voltage_df['cell_id'] == cell_id]
+    ca_raw_cell_data = ca_raw_df[ca_raw_df['cell_id'] == cell_id]
+    voltage_raw_cell_data = voltage_raw_df[voltage_raw_df['cell_id'] == cell_id]
     
-    if len(ca_cell_data) == 0 or len(voltage_cell_data) == 0:
+    if len(ca_raw_cell_data) == 0 or len(voltage_raw_cell_data) == 0:
         print(f"Error: Cell {cell_id} not found in timeseries data")
         return None
     
     # Extract timeseries (excluding last 3 columns)
-    ca_trace = ca_cell_data.iloc[0, :-3].values
-    voltage_trace = voltage_cell_data.iloc[0, :-3].values
+    ca_raw_trace = ca_raw_cell_data.iloc[0, :-3].values
+    voltage_raw_trace = voltage_raw_cell_data.iloc[0, :-3].values
+    
+    # Calculate ΔF/F for raw data
+    ca_baseline = np.median(ca_raw_trace)
+    voltage_baseline = np.median(voltage_raw_trace)
+    ca_raw_deltaff = (ca_raw_trace - ca_baseline) / ca_baseline
+    voltage_raw_deltaff = (voltage_raw_trace - voltage_baseline) / voltage_baseline
+    
+    print(f"Calcium baseline (median F₀): {ca_baseline:.2f}")
+    print(f"Voltage baseline (median F₀): {voltage_baseline:.2f}")
     
     # Create time axis (5 Hz sampling rate)
     dt = 0.2  # 0.2 second sampling rate (5 Hz = 1/5 = 0.2s per sample)
-    time_axis = np.arange(len(ca_trace)) * dt
+    time_axis = np.arange(len(ca_raw_trace)) * dt
     
     # Find indices for the time segment
     start_idx = int(start_time / dt)
@@ -376,38 +402,85 @@ def plot_segment_timeseries(ca_ts_path, voltage_ts_path, cell_id,
     
     # Extract segment
     time_segment = time_axis[start_idx:end_idx]
-    ca_segment = ca_trace[start_idx:end_idx]
-    voltage_segment = voltage_trace[start_idx:end_idx]
+    ca_segment = ca_raw_deltaff[start_idx:end_idx]
+    voltage_segment = voltage_raw_deltaff[start_idx:end_idx]
     
-    # Normalize traces
-    ca_normalized = (ca_segment - np.mean(ca_segment)) / np.std(ca_segment)
-    voltage_normalized = (voltage_segment - np.mean(voltage_segment)) / np.std(voltage_segment)
+    # Center the data by subtracting median (for overlaying)
+    ca_centered = ca_segment - np.median(ca_segment)
+    voltage_centered = voltage_segment - np.median(voltage_segment)
     
-    # Create figure
-    fig, ax = plt.subplots(figsize=(12, 3))
+    # Apply Gaussian filtering
+    ca_filtered = ndimage.gaussian_filter1d(ca_centered, sigma=gaussian_sigma)
+    voltage_filtered = ndimage.gaussian_filter1d(voltage_centered, sigma=gaussian_sigma)
     
-    # Plot traces (overlapping)
-    ax.plot(time_segment, ca_normalized, color='red', linewidth=2, label=r'Ca²⁺ ($\Delta$F/F)')
-    ax.plot(time_segment, voltage_normalized, color='blue', linewidth=2, 
-            linestyle='--', label=r'Voltage (-$\Delta$F/F)')
+    # Get tab10 colors (orange and blue)
+    tab10_colors = plt.cm.tab10.colors
+    ca_color = tab10_colors[1]  # Orange
+    voltage_color = tab10_colors[0]  # Blue
+    
+    # Create figure with white background
+    fig, ax = plt.subplots(figsize=(12, 4), facecolor='white')
+    ax.set_facecolor('white')
+    
+    # Plot calcium traces
+    # Raw data with transparency
+    ax.plot(time_segment, ca_centered, 
+            color=ca_color, linewidth=1, alpha=0.7, 
+            label=r'Ca²⁺ Raw ($\Delta$F/F)')
+    
+    # Filtered data (opaque)
+    ax.plot(time_segment, ca_filtered, 
+            color=ca_color, linewidth=2, alpha=1.0,
+            label=r'Ca²⁺ Gaussian Filtered ($\Delta$F/F)')
+    
+    # Plot voltage traces
+    # Raw data with transparency
+    ax.plot(time_segment, voltage_centered, 
+            color=voltage_color, linewidth=1, alpha=0.7,
+            label=r'Voltage Raw (-$\Delta$F/F)')
+    
+    # Filtered data (opaque)
+    ax.plot(time_segment, voltage_filtered, 
+            color=voltage_color, linewidth=2, alpha=1.0,
+            label=r'Voltage Gaussian Filtered (-$\Delta$F/F)')
     
     # Add scale bars
+    # Calculate positions
+    y_min = min(min(ca_centered), min(voltage_centered))
+    y_max = max(max(ca_centered), max(voltage_centered))
+    y_range = y_max - y_min
+    
     # X scale bar (10s)
     x_scale_length = 10  # seconds
     x_scale_start = max(time_segment) - x_scale_length - 5
-    y_pos = min(min(ca_normalized), min(voltage_normalized)) - 0.5
+    y_scale_pos = y_min - y_range * 0.15
     
     ax.plot([x_scale_start, x_scale_start + x_scale_length], 
-            [y_pos, y_pos], 'k-', linewidth=3)
-    ax.text(x_scale_start + x_scale_length/2, y_pos - 0.2, '10 s', 
+            [y_scale_pos, y_scale_pos], 'k-', linewidth=3)
+    ax.text(x_scale_start + x_scale_length/2, y_scale_pos - y_range * 0.08, '10 s', 
             ha='center', va='top', fontsize=14)
     
-    # Y scale bar (2%)
-    y_scale = 2.0
-    x_pos = max(time_segment) - 2  # Position it within the plot area
-    ax.plot([x_pos, x_pos], [y_pos, y_pos + y_scale], 'k-', linewidth=3)
-    ax.text(x_pos - 0.5, y_pos + y_scale/2, '2%', ha='right', va='center', 
-            fontsize=14, rotation=90)
+    # Calcium Y scale bar (colored)
+    ca_scale_x = max(time_segment) - 15
+    ca_scale_y_start = y_min - y_range * 0.05
+    ax.plot([ca_scale_x, ca_scale_x], 
+            [ca_scale_y_start, ca_scale_y_start + ca_scale_bar], 
+            color=ca_color, linewidth=6)
+    ax.text(ca_scale_x - 1, ca_scale_y_start + ca_scale_bar/2, 
+            f'{ca_scale_bar*100:.0f}% $\Delta$F/F', 
+            ha='right', va='center', fontsize=14, 
+            color=ca_color, fontweight='bold')
+    
+    # Voltage Y scale bar (colored)
+    voltage_scale_x = max(time_segment) - 5
+    voltage_scale_y_start = y_min - y_range * 0.05
+    ax.plot([voltage_scale_x, voltage_scale_x], 
+            [voltage_scale_y_start, voltage_scale_y_start + voltage_scale_bar], 
+            color=voltage_color, linewidth=6)
+    ax.text(voltage_scale_x - 1, voltage_scale_y_start + voltage_scale_bar/2, 
+            f'{voltage_scale_bar*100:.0f}% $\Delta$F/F', 
+            ha='right', va='center', fontsize=14, 
+            color=voltage_color, fontweight='bold')
     
     # Clean up axes
     ax.set_xlim(start_time, end_time)
@@ -430,12 +503,12 @@ def plot_segment_timeseries(ca_ts_path, voltage_ts_path, cell_id,
         
         # Save PNG
         png_path = save_path.with_suffix('.png')
-        fig.savefig(png_path, dpi=300, bbox_inches='tight', transparent=True)
+        fig.savefig(png_path, dpi=300, bbox_inches='tight', facecolor='white')
         print(f"PNG saved to: {png_path}")
         
         # Save EPS
         eps_path = save_path.with_suffix('.eps')
-        fig.savefig(eps_path, format='eps', bbox_inches='tight')
+        fig.savefig(eps_path, format='eps', bbox_inches='tight', dpi=300, facecolor='white')
         print(f"EPS saved to: {eps_path}")
     
     plt.show()
@@ -531,6 +604,197 @@ def extract_and_save_frames(tif_folder_path, save_dir, ca_frame_idx=None, voltag
     
     return ca_frame, voltage_frame
 
+def plot_raw_timeseries(ca_ts_path, voltage_ts_path, ca_raw_path, voltage_raw_path, 
+                        cell_id, save_path=None, ca_scale_bar=0.1, voltage_scale_bar=0.05,
+                        gaussian_sigma=3.0):
+    """
+    Plot full raw and filtered timeseries for calcium and voltage data.
+    
+    Parameters:
+    -----------
+    ca_ts_path : str or Path
+        Path to processed calcium timeseries CSV
+    voltage_ts_path : str or Path  
+        Path to processed voltage timeseries CSV
+    ca_raw_path : str or Path
+        Path to raw calcium timeseries CSV
+    voltage_raw_path : str or Path
+        Path to raw voltage timeseries CSV
+    cell_id : int
+        Timeseries cell ID (e.g., 278)
+    save_path : str or Path
+        Base path for saving (will save both PNG and EPS)
+    ca_scale_bar : float
+        Scale bar size for calcium data (default: 0.1)
+    voltage_scale_bar : float
+        Scale bar size for voltage data (default: 0.05)
+    gaussian_sigma : float
+        Sigma for Gaussian filtering (default: 2.0)
+    """
+    
+    print(f"Loading timeseries for cell {cell_id}...")
+    
+    # Load all timeseries data
+    ca_df = pd.read_csv(ca_ts_path)
+    voltage_df = pd.read_csv(voltage_ts_path)
+    ca_raw_df = pd.read_csv(ca_raw_path)
+    voltage_raw_df = pd.read_csv(voltage_raw_path)
+    
+    # Find the specific cell in all datasets
+    ca_cell_data = ca_df[ca_df['cell_id'] == cell_id]
+    voltage_cell_data = voltage_df[voltage_df['cell_id'] == cell_id]
+    ca_raw_cell_data = ca_raw_df[ca_raw_df['cell_id'] == cell_id]
+    voltage_raw_cell_data = voltage_raw_df[voltage_raw_df['cell_id'] == cell_id]
+    
+    # Check if cell exists in all datasets
+    if len(ca_cell_data) == 0:
+        print(f"Error: Cell {cell_id} not found in processed calcium data")
+        return None
+    if len(voltage_cell_data) == 0:
+        print(f"Error: Cell {cell_id} not found in processed voltage data")
+        return None
+    if len(ca_raw_cell_data) == 0:
+        print(f"Error: Cell {cell_id} not found in raw calcium data")
+        return None
+    if len(voltage_raw_cell_data) == 0:
+        print(f"Error: Cell {cell_id} not found in raw voltage data")
+        return None
+    
+    # Extract timeseries (excluding last 3 columns)
+    ca_trace = ca_cell_data.iloc[0, :-3].values
+    voltage_trace = voltage_cell_data.iloc[0, :-3].values
+    ca_raw_trace = ca_raw_cell_data.iloc[0, :-3].values
+    voltage_raw_trace = voltage_raw_cell_data.iloc[0, :-3].values
+    
+    # Calculate ΔF/F for raw data
+    # Use median as baseline (F₀)
+    ca_baseline = np.median(ca_raw_trace)
+    voltage_baseline = np.median(voltage_raw_trace)
+    
+    # Calculate ΔF/F = (F - F₀) / F₀
+    ca_raw_deltaff = (ca_raw_trace - ca_baseline) / ca_baseline
+    voltage_raw_deltaff = (voltage_raw_trace - voltage_baseline) / voltage_baseline
+    
+    print(f"Calcium baseline (median F₀): {ca_baseline:.2f}")
+    print(f"Voltage baseline (median F₀): {voltage_baseline:.2f}")
+    
+    # Create time axis (5 Hz sampling rate)
+    dt = 0.2  # 0.2 second sampling rate (5 Hz)
+    time_axis = np.arange(len(ca_raw_deltaff)) * dt
+    
+    # Center the ΔF/F data by subtracting median
+    ca_raw_centered = ca_raw_deltaff - np.median(ca_raw_deltaff)
+    voltage_raw_centered = voltage_raw_deltaff - np.median(voltage_raw_deltaff)
+    
+    # Apply Gaussian filtering to ΔF/F data for filtered traces
+    ca_filtered = ndimage.gaussian_filter1d(ca_raw_centered, sigma=gaussian_sigma)
+    voltage_filtered = ndimage.gaussian_filter1d(voltage_raw_centered, sigma=gaussian_sigma)
+    
+    # Get tab10 colors (blue and orange)
+    tab10_colors = plt.cm.tab10.colors
+    ca_color = tab10_colors[1]  # Orange (index 1)
+    voltage_color = tab10_colors[0]  # Blue (index 0)
+    
+    # Create figure with white background
+    fig, ax = plt.subplots(figsize=(15, 6), facecolor='white')
+    ax.set_facecolor('white')
+    
+    # Set up y-offset for overlapping traces
+    y_offset = 0
+    
+    # Plot calcium traces
+    # Raw data with transparency
+    ax.plot(time_axis, ca_raw_centered + y_offset, 
+            color=ca_color, linewidth=1, alpha=0.7, 
+            label=f'Ca²⁺ Raw (ΔF/F)')
+    
+    # Filtered data (opaque)
+    ax.plot(time_axis, ca_filtered + y_offset, 
+            color=ca_color, linewidth=2, alpha=1.0,
+            label=f'Ca²⁺ Gaussian Filtered (ΔF/F)')
+    
+    # Plot voltage traces
+    # Raw data with transparency  
+    ax.plot(time_axis, voltage_raw_centered + y_offset, 
+            color=voltage_color, linewidth=1, alpha=0.7,
+            label=f'Voltage Raw (-ΔF/F)')
+    
+    # Filtered data (opaque)
+    ax.plot(time_axis, voltage_filtered + y_offset, 
+            color=voltage_color, linewidth=2, alpha=1.0,
+            label=f'Voltage Gaussian Filtered (-ΔF/F)')
+    
+    # Calculate positions for scale bars
+    x_max = max(time_axis)
+    y_min = min(min(ca_raw_centered), min(voltage_raw_centered)) - 0.1
+    
+    # Time scale bar (100s)
+    time_scale_length = 100  # seconds
+    time_scale_start = x_max - time_scale_length - 20
+    
+    ax.plot([time_scale_start, time_scale_start + time_scale_length], 
+            [y_min, y_min], 'k-', linewidth=3)
+    ax.text(time_scale_start + time_scale_length/2, y_min - 0.02, '100 s', 
+            ha='center', va='top', fontsize=14)
+    
+    # Calculate better positions and make scale bars more visible
+    y_data_range = max(max(ca_raw_centered), max(voltage_raw_centered)) - min(min(ca_raw_centered), min(voltage_raw_centered))
+    
+    # Calcium scale bar (colored) - positioned higher and thicker
+    ca_scale_x = x_max - 200  # Position for calcium scale bar
+    ca_scale_y_start = y_min + y_data_range * 0.1  # Start higher up
+    ax.plot([ca_scale_x, ca_scale_x], 
+            [ca_scale_y_start, ca_scale_y_start + ca_scale_bar], 
+            color=ca_color, linewidth=6)  # Thicker line
+    ax.text(ca_scale_x - 10, ca_scale_y_start + ca_scale_bar/2, 
+        f'{ca_scale_bar*100:.0f}% $\Delta$F/F', ha='right', va='center', 
+        fontsize=14, color=ca_color, fontweight='bold')
+    
+    # Voltage scale bar (colored) - positioned higher and thicker
+    voltage_scale_x = x_max - 100  # Position for voltage scale bar
+    voltage_scale_y_start = y_min + y_data_range * 0.1  # Start higher up
+    ax.plot([voltage_scale_x, voltage_scale_x], 
+            [voltage_scale_y_start, voltage_scale_y_start + voltage_scale_bar], 
+            color=voltage_color, linewidth=6)  # Thicker line
+    ax.text(voltage_scale_x - 10, voltage_scale_y_start + voltage_scale_bar/2, 
+        f'{voltage_scale_bar*100:.0f}% $\Delta$F/F', ha='right', va='center', 
+        fontsize=14, color=voltage_color, fontweight='bold')
+    
+    # Clean up axes
+    ax.set_xlim(0, x_max)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    
+    # Add title
+    ax.set_title(f'Cell {cell_id} - Raw and Filtered Timeseries (ΔF/F)', 
+                fontsize=16, fontweight='bold', pad=20)
+    
+    # Add legend
+    ax.legend(loc='upper right', fontsize=12, frameon=True)
+    
+    plt.tight_layout()
+    
+    # Save both formats if path provided
+    if save_path:
+        save_path = Path(save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Save PNG with white background
+        png_path = save_path.with_suffix('.png')
+        fig.savefig(png_path, dpi=300, bbox_inches='tight', facecolor='white')
+        print(f"PNG saved to: {png_path}")
+        
+        # Save EPS with white background
+        eps_path = save_path.with_suffix('.eps')
+        fig.savefig(eps_path, format='eps', bbox_inches='tight', dpi=300, facecolor='white')
+        print(f"EPS saved to: {eps_path}")
+    
+    plt.show()
+    return fig
 
 # Set up paths 
 home = Path.home()
@@ -554,22 +818,21 @@ seg_dir = base_dir / 'results_1'
 seg_path = seg_dir / '20250226_slip5_area1_TRAM-34_1uM_masks_renumbered.npy'
  
 # Timeseries paths
-timeseries_dir = Path(data_dir, r'results_pipeline\20250226_slip5_area1')
+timeseries_dir = Path(data_dir, 'results_pipeline/20250226_slip5_area1')
 ca_ts_path = timeseries_dir / 'pre_calcium_TRAM-34_1uM_20250226_slip5_area1.csv'
 voltage_ts_path = timeseries_dir / 'pre_voltage_TRAM-34_1uM_20250226_slip5_area1.csv'
  
 # Call the function
-#fig = plot_ca_voltage_figure(voltage_img_path, ca_img_path, seg_path, ca_ts_path, voltage_ts_path,
-#                            cell_ids=[276,278], save_path= save_dir)
-
-# Example: Plot segment for cell 278 (seg ID 314) from 420s to 500s
+'''
+fig = plot_ca_voltage_figure(voltage_img_path, ca_img_path, seg_path, ca_ts_path, voltage_ts_path,
+                            cell_ids=[278], save_path= save_dir)
 
 segment_save_path = Path(data_dir, 'paper_figures', 'eg_segment')
 fig_segment = plot_segment_timeseries(ca_ts_path, voltage_ts_path, 
                                     cell_id=278, 
                                     start_time=480, end_time=580, 
                                     save_path=segment_save_path)
-'''
+
 ca_frame, voltage_frame = extract_and_save_frames(
     tif_folder_path= Path(home, 'firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/20250226/slip5/area1/20250226_slip5_area1_TRAM-34_1uM_1'), 
     save_dir= Path(data_dir, 'paper_figures'),
@@ -577,3 +840,39 @@ ca_frame, voltage_frame = extract_and_save_frames(
     voltage_frame_idx=1075 # Specify voltage frame index
 )
 '''
+# Raw data paths
+ca_raw_path = timeseries_dir / 'pre_calcium_TRAM-34_1uM_20250226_slip5_area1_raw.csv'
+voltage_raw_path = timeseries_dir / 'pre_voltage_TRAM-34_1uM_20250226_slip5_area1_raw.csv'
+
+# Save path for raw timeseries
+raw_save_path = Path(data_dir, 'paper_figures', 'raw_timeseries_cell278')
+
+# Call the raw timeseries function
+fig_raw = plot_raw_timeseries(
+    ca_ts_path=ca_ts_path,
+    voltage_ts_path=voltage_ts_path, 
+    ca_raw_path=ca_raw_path,
+    voltage_raw_path=voltage_raw_path,
+    cell_id=278,
+    save_path=raw_save_path,
+    ca_scale_bar=0.2,      # Adjust as needed
+    voltage_scale_bar=0.2  # Adjust as needed
+)
+
+# Save path for segment
+segment_save_path = Path(data_dir, 'paper_figures', 'eg_segment')
+
+# Call the updated function
+fig_segment = plot_segment_timeseries(
+    ca_ts_path=ca_ts_path,
+    voltage_ts_path=voltage_ts_path,
+    ca_raw_path=ca_raw_path,
+    voltage_raw_path=voltage_raw_path,
+    cell_id=278, 
+    start_time=480, 
+    end_time=580, 
+    save_path=segment_save_path,
+    ca_scale_bar=0.2,      
+    voltage_scale_bar=0.2,  
+    gaussian_sigma=3.0       
+)

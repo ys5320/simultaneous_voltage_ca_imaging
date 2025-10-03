@@ -1,0 +1,35 @@
+====================================
+=== THIS MESSAGE IS NOT AN ERROR ===
+
+This module is deprecated. If you are using conda, please consider moving to our newer cluster - CX3 Phase 2.
+More info can be found here:
+https://icl-rcs-user-guide.readthedocs.io/en/latest/hpc/pilot/cx3-phase2/
+https://icl-rcs-user-guide.readthedocs.io/en/latest/hpc/pilot/cx3-phase2/#python-and-conda-environments
+
+====================================
+
+Traceback (most recent call last):
+  File "/rds/general/user/ys5320/home/anaconda3/envs/cancer_HPC_tst/lib/python3.8/site-packages/tifffile/tifffile.py", line 2854, in __init__
+    byteorder = {b'II': '<', b'MM': '>', b'EP': '<'}[header[:2]]
+KeyError: b'\x00\x00'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "create_paper_data.py", line 40, in <module>
+    make_videos(df_file = df_data, top_dir = top_dir, HPC_num = HPC_num)
+  File "/rds/general/project/thefarm2/live/Firefly/Calcium_Voltage_Imaging/code_yilin/make_videos.py", line 56, in make_videos
+    image_stack = tiff.imread(str(folder_path / tif_files[0]))
+  File "/rds/general/user/ys5320/home/anaconda3/envs/cancer_HPC_tst/lib/python3.8/site-packages/tifffile/tifffile.py", line 753, in imread
+    return tif.asarray(**kwargs)
+  File "/rds/general/user/ys5320/home/anaconda3/envs/cancer_HPC_tst/lib/python3.8/site-packages/tifffile/tifffile.py", line 2999, in asarray
+    series = self.series[series]
+  File "/rds/general/user/ys5320/home/anaconda3/envs/cancer_HPC_tst/lib/python3.8/site-packages/tifffile/tifffile.py", line 927, in __get__
+    value = self.func(instance)
+  File "/rds/general/user/ys5320/home/anaconda3/envs/cancer_HPC_tst/lib/python3.8/site-packages/tifffile/tifffile.py", line 3120, in series
+    series = getattr(self, '_series_' + name)()
+  File "/rds/general/user/ys5320/home/anaconda3/envs/cancer_HPC_tst/lib/python3.8/site-packages/tifffile/tifffile.py", line 3970, in _series_ome
+    tif = TiffFile(
+  File "/rds/general/user/ys5320/home/anaconda3/envs/cancer_HPC_tst/lib/python3.8/site-packages/tifffile/tifffile.py", line 2856, in __init__
+    raise TiffFileError('not a TIFF file')
+tifffile.tifffile.TiffFileError: not a TIFF file

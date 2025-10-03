@@ -1,0 +1,164 @@
+Original path: /rds/general/user/be320/projects/thefarm2/live/Firefly/Calcium_Voltage_Imaging/MDA_MB_468/20250226/slip1/area1/20250226_slip1_area1_A01_50uM_1
+Fixed path: /rds/general/user/ys5320/projects/thefarm2/live/Firefly/Calcium_Voltage_Imaging/MDA_MB_468/20250226/slip1/area1/20250226_slip1_area1_A01_50uM_1
+12 0
+12 1
+12 2
+12 3
+12 4
+12 5
+12 6
+12 7
+12 8
+12 9
+12 10
+12 11
+20250327_slip2_area2
+['20250327_slip2_area2_condition_d_1_MMStack_Default.ome.tif', '20250327_slip2_area2_condition_d_1_MMStack_Default_1.ome.tif']
+Loaded Z-stack shape: (10000, 512, 512)
+(5000, 512, 512) (5000, 512, 512)
+(5000, 512, 512) (5000, 512, 512)
+✅ Saved enhanced_voltage_video.avi at 1000 FPS in /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250327_slip2_area2
+✅ Saved enhanced_calcium_video.avi at 1000 FPS in /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250327_slip2_area2
+12 13
+12 14
+12 15
+12 16
+12 17
+12 18
+12 19
+12 0
+12 1
+12 2
+12 3
+12 4
+12 5
+12 6
+12 7
+12 8
+12 9
+12 10
+12 11
+
+Processing pipeline for trial: 20250327_slip2_area2
+Processing trial: 20250327_slip2_area2
+Voltage file: 20250327_slip2_area2_condition_d_voltage_transfected.csv
+Calcium file: 20250327_slip2_area2_condition_d_ca_transfected.csv
+--------------------------------------------------------------------------------
+Loading voltage and calcium data...
+Detected: post_only with 5000 datapoints
+Detected: post_only with 5000 datapoints
+Voltage cells: 1, Calcium cells: 1
+=== POST-ONLY FILES - SKIPPING SEGMENTATION ===
+=== STEP 1: Normalization + High-Pass Filter to Full VOLTAGE Timeseries ===
+Applying normalization to raw voltage data (before filtering)...
+  - Min-max normalization applied to voltage (range: [-1, 1])
+Applying high-pass filter to normalized voltage data (cutoff: 0.01 Hz)...
+Normalization + High-pass filtering complete for voltage. Shape: (1, 5000)
+=== STEP 1: Normalization + High-Pass Filter to Full CALCIUM Timeseries ===
+Applying normalization to raw calcium data (before filtering)...
+  - Min-max normalization applied to calcium (range: [-1, 1])
+Applying high-pass filter to normalized calcium data (cutoff: 0.01 Hz)...
+Normalization + High-pass filtering complete for calcium. Shape: (1, 5000)
+  - voltage Gaussian filtering applied (sigma=3)
+  Voltage data saved with original cell IDs to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250327_slip2_area2/post_voltage_unknown_20250327_slip2_area2.csv
+  Voltage RAW data saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250327_slip2_area2/post_voltage_unknown_20250327_slip2_area2_raw.csv
+  - calcium Gaussian filtering applied (sigma=3)
+  Calcium data saved with original cell IDs to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250327_slip2_area2/post_calcium_unknown_20250327_slip2_area2.csv
+  Calcium RAW data saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250327_slip2_area2/post_calcium_unknown_20250327_slip2_area2_raw.csv
+=== CREATING POST-ONLY VIDEO ===
+=== CREATING POST-ONLY VIDEOS FOR 20250327_slip2_area2 ===
+  Using TIFF files: ['20250327_slip2_area2_condition_d_1_MMStack_Default.ome.tif', '20250327_slip2_area2_condition_d_1_MMStack_Default_1.ome.tif']
+  Loaded Z-stack shape: (10000, 512, 512)
+  Deinterleaved shapes: V=(5000, 512, 512), Ca=(5000, 512, 512)
+  Creating post-only videos: entire recording (frames 0-4999)
+✅ Saved post_voltage_20250327_slip2_area2.avi at 1000 FPS in /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250327_slip2_area2
+✅ Saved post_calcium_20250327_slip2_area2.avi at 1000 FPS in /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250327_slip2_area2
+  ✓ Created post-only videos: post_voltage_20250327_slip2_area2.avi & post_calcium_20250327_slip2_area2.avi
+
+=== VOLTAGE EVENT DETECTION ===
+Using FIXED STD voltage event detection
+Min duration: 1.0s, Threshold: 2.5σ
+  Using provided fixed std: 0.0500
+  Fixed threshold for all channels: ±0.1250
+  Using per-channel median baselines with fixed STD threshold
+Detecting voltage events using fixed_std approach...
+  - Applying full morphological filtering for voltage channel 0
+Detected 4 voltage events using fixed_std (fixed=0.0500)
+
+=== FILTERING BLEACHING ARTIFACTS: VOLTAGE POST SEGMENT ===
+Filtering bleaching artifacts for voltage (≥5 cells, 70% overlap, start <10.0s)...
+  Original voltage events: 4
+  Excluded bleaching artifacts: 0
+  Remaining voltage events: 4
+
+=== FILTERING SIMULTANEOUS EVENTS: VOLTAGE POST SEGMENT ===
+Filtering simultaneous voltage events (max 999 cells, 50% overlap)...
+  Original voltage events: 4
+  Filtered voltage events: 4
+  Excluded voltage events: 0
+FIXED: Using per-channel baselines + fixed STD threshold for voltage visualization...
+  Fixed voltage std: 0.0500
+  Fixed voltage threshold: ±0.1250
+  Using per-channel baselines (as in detection)
+  FIXED voltage plot saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/event_detection_plots/post_voltage_unknown_20250327_slip2_area2_events_perchannel_fixed.png
+Enhanced filtered voltage events saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250327_slip2_area2/events_voltage_unknown_20250327_slip2_area2_fixed_std_adaptive_filtered.csv
+
+FIXED STD VOLTAGE Event Summary for unknown 20250327_slip2_area2:
+  Total filtered events: 4
+  Total excluded events: 0 (50% rule)
+  Pre-segment events: 0
+  Post-segment events: 4
+  Duration stats: mean=34.35s, median=41.30s
+
+=== CALCIUM EVENT DETECTION ===
+Using FIXED STD calcium event detection
+Min duration: 1.0s, Threshold: 2.5σ
+  Using provided fixed std: 0.0500
+  Fixed threshold for all channels: ±0.1250
+  Using per-channel median baselines with fixed STD threshold
+Detecting calcium events using fixed_std approach...
+  - Applying full morphological filtering for voltage channel 0
+Detected 41 calcium events using fixed_std (fixed=0.0500)
+
+=== FILTERING BLEACHING ARTIFACTS: CALCIUM POST SEGMENT ===
+Filtering bleaching artifacts for calcium (≥5 cells, 70% overlap, start <10.0s)...
+  Original calcium events: 41
+  Excluded bleaching artifacts: 0
+  Remaining calcium events: 41
+
+=== FILTERING SIMULTANEOUS EVENTS: CALCIUM POST SEGMENT ===
+Filtering simultaneous calcium events (max 999 cells, 50% overlap)...
+  Original calcium events: 41
+  Filtered calcium events: 41
+  Excluded calcium events: 0
+FIXED: Using per-channel baselines + fixed STD threshold for calcium visualization...
+  Fixed calcium std: 0.0500
+  Fixed calcium threshold: ±0.1250
+  Using per-channel baselines (as in detection)
+  FIXED calcium plot saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/event_detection_plots/post_calcium_unknown_20250327_slip2_area2_events_perchannel_fixed.png
+Enhanced filtered calcium events saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250327_slip2_area2/events_calcium_unknown_20250327_slip2_area2_fixed_std_adaptive_filtered.csv
+
+FIXED STD CALCIUM Event Summary for unknown 20250327_slip2_area2:
+  Total filtered events: 41
+  Total excluded events: 0 (50% rule)
+  Pre-segment events: 0
+  Post-segment events: 41
+  Duration stats: mean=8.24s, median=7.60s
+✓ Pipeline completed for 20250327_slip2_area2
+12 13
+12 14
+12 15
+12 16
+12 17
+12 18
+12 19
+
+============================================
+
+        Job resource usage summary 
+
+                 Memory (GB)    NCPUs
+ Requested  :        64            32
+ Used       :         8 (peak)  16.15 (ave)
+
+============================================

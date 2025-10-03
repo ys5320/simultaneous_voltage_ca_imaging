@@ -1,0 +1,682 @@
+Original path: /rds/general/user/be320/projects/thefarm2/live/Firefly/Calcium_Voltage_Imaging/MDA_MB_468/20250226/slip1/area1/20250226_slip1_area1_A01_50uM_1
+Fixed path: /rds/general/user/ys5320/projects/thefarm2/live/Firefly/Calcium_Voltage_Imaging/MDA_MB_468/20250226/slip1/area1/20250226_slip1_area1_A01_50uM_1
+3 0
+3 1
+3 2
+20250319_slip2_area1
+['20250319_slip2_area1_condition_e_1_MMStack_Default.ome.tif', '20250319_slip2_area1_condition_e_1_MMStack_Default_1.ome.tif']
+Loaded Z-stack shape: (10000, 512, 512)
+(5000, 512, 512) (5000, 512, 512)
+(5000, 512, 512) (5000, 512, 512)
+✅ Saved enhanced_voltage_video.avi at 1000 FPS in /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250319_slip2_area1
+✅ Saved enhanced_calcium_video.avi at 1000 FPS in /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250319_slip2_area1
+3 4
+3 5
+3 6
+3 7
+3 8
+3 9
+3 10
+3 11
+3 12
+3 13
+3 14
+3 15
+3 16
+3 17
+3 18
+3 19
+3 0
+3 1
+3 2
+
+Processing pipeline for trial: 20250319_slip2_area1
+Processing trial: 20250319_slip2_area1
+Voltage file: 20250319_slip2_area1_condition_e_voltage_transfected.csv
+Calcium file: 20250319_slip2_area1_condition_e_ca_transfected.csv
+--------------------------------------------------------------------------------
+Loading voltage and calcium data...
+Detected: post_only with 5000 datapoints
+Detected: post_only with 5000 datapoints
+Voltage cells: 258, Calcium cells: 258
+=== POST-ONLY FILES - SKIPPING SEGMENTATION ===
+=== STEP 1: Normalization + High-Pass Filter to Full VOLTAGE Timeseries ===
+Applying normalization to raw voltage data (before filtering)...
+  - Min-max normalization applied to voltage (range: [-1, 1])
+Applying high-pass filter to normalized voltage data (cutoff: 0.01 Hz)...
+Normalization + High-pass filtering complete for voltage. Shape: (258, 5000)
+=== STEP 1: Normalization + High-Pass Filter to Full CALCIUM Timeseries ===
+Applying normalization to raw calcium data (before filtering)...
+  - Min-max normalization applied to calcium (range: [-1, 1])
+Applying high-pass filter to normalized calcium data (cutoff: 0.01 Hz)...
+Normalization + High-pass filtering complete for calcium. Shape: (258, 5000)
+  - voltage Gaussian filtering applied (sigma=3)
+  Voltage data saved with original cell IDs to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250319_slip2_area1/post_voltage_unknown_20250319_slip2_area1.csv
+  Voltage RAW data saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250319_slip2_area1/post_voltage_unknown_20250319_slip2_area1_raw.csv
+  - calcium Gaussian filtering applied (sigma=3)
+  Calcium data saved with original cell IDs to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250319_slip2_area1/post_calcium_unknown_20250319_slip2_area1.csv
+  Calcium RAW data saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250319_slip2_area1/post_calcium_unknown_20250319_slip2_area1_raw.csv
+=== CREATING POST-ONLY VIDEO ===
+=== CREATING POST-ONLY VIDEOS FOR 20250319_slip2_area1 ===
+  Using TIFF files: ['20250319_slip2_area1_condition_e_1_MMStack_Default.ome.tif', '20250319_slip2_area1_condition_e_1_MMStack_Default_1.ome.tif']
+  Loaded Z-stack shape: (10000, 512, 512)
+  Deinterleaved shapes: V=(5000, 512, 512), Ca=(5000, 512, 512)
+  Creating post-only videos: entire recording (frames 0-4999)
+✅ Saved post_voltage_20250319_slip2_area1.avi at 1000 FPS in /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250319_slip2_area1
+✅ Saved post_calcium_20250319_slip2_area1.avi at 1000 FPS in /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250319_slip2_area1
+  ✓ Created post-only videos: post_voltage_20250319_slip2_area1.avi & post_calcium_20250319_slip2_area1.avi
+
+=== VOLTAGE EVENT DETECTION ===
+Using FIXED STD voltage event detection
+Min duration: 1.0s, Threshold: 2.5σ
+  Using provided fixed std: 0.0500
+  Fixed threshold for all channels: ±0.1250
+  Using per-channel median baselines with fixed STD threshold
+Detecting voltage events using fixed_std approach...
+  - Applying full morphological filtering for voltage channel 0
+  - Applying full morphological filtering for voltage channel 1
+  - Applying full morphological filtering for voltage channel 2
+  - Applying full morphological filtering for voltage channel 3
+  - Applying full morphological filtering for voltage channel 4
+  - Applying full morphological filtering for voltage channel 5
+  - Applying full morphological filtering for voltage channel 6
+  - Applying full morphological filtering for voltage channel 7
+  - Applying full morphological filtering for voltage channel 8
+  - Applying full morphological filtering for voltage channel 9
+  - Applying full morphological filtering for voltage channel 10
+  - Applying full morphological filtering for voltage channel 11
+  - Applying full morphological filtering for voltage channel 12
+  - Applying full morphological filtering for voltage channel 13
+  - Applying full morphological filtering for voltage channel 14
+  - Applying full morphological filtering for voltage channel 15
+  - Applying full morphological filtering for voltage channel 16
+  - Applying full morphological filtering for voltage channel 17
+  - Applying full morphological filtering for voltage channel 18
+  - Applying full morphological filtering for voltage channel 19
+  - Applying full morphological filtering for voltage channel 20
+  - Applying full morphological filtering for voltage channel 21
+  - Applying full morphological filtering for voltage channel 22
+  - Applying full morphological filtering for voltage channel 23
+  - Applying full morphological filtering for voltage channel 24
+  - Applying full morphological filtering for voltage channel 25
+  - Applying full morphological filtering for voltage channel 26
+  - Applying full morphological filtering for voltage channel 27
+  - Applying full morphological filtering for voltage channel 28
+  - Applying full morphological filtering for voltage channel 29
+  - Applying full morphological filtering for voltage channel 30
+  - Applying full morphological filtering for voltage channel 31
+  - Applying full morphological filtering for voltage channel 32
+  - Applying full morphological filtering for voltage channel 33
+  - Applying full morphological filtering for voltage channel 34
+  - Applying full morphological filtering for voltage channel 35
+  - Applying full morphological filtering for voltage channel 36
+  - Applying full morphological filtering for voltage channel 37
+  - Applying full morphological filtering for voltage channel 38
+  - Applying full morphological filtering for voltage channel 39
+  - Applying full morphological filtering for voltage channel 40
+  - Applying full morphological filtering for voltage channel 41
+  - Applying full morphological filtering for voltage channel 42
+  - Applying full morphological filtering for voltage channel 43
+  - Applying full morphological filtering for voltage channel 44
+  - Applying full morphological filtering for voltage channel 45
+  - Applying full morphological filtering for voltage channel 46
+  - Applying full morphological filtering for voltage channel 47
+  - Applying full morphological filtering for voltage channel 48
+  - Applying full morphological filtering for voltage channel 49
+  - Applying full morphological filtering for voltage channel 50
+  - Applying full morphological filtering for voltage channel 51
+  - Applying full morphological filtering for voltage channel 52
+  - Applying full morphological filtering for voltage channel 53
+  - Applying full morphological filtering for voltage channel 54
+  - Applying full morphological filtering for voltage channel 55
+  - Applying full morphological filtering for voltage channel 56
+  - Applying full morphological filtering for voltage channel 57
+  - Applying full morphological filtering for voltage channel 58
+  - Applying full morphological filtering for voltage channel 59
+  - Applying full morphological filtering for voltage channel 60
+  - Applying full morphological filtering for voltage channel 61
+  - Applying full morphological filtering for voltage channel 62
+  - Applying full morphological filtering for voltage channel 63
+  - Applying full morphological filtering for voltage channel 64
+  - Applying full morphological filtering for voltage channel 65
+  - Applying full morphological filtering for voltage channel 66
+  - Applying full morphological filtering for voltage channel 67
+  - Applying full morphological filtering for voltage channel 68
+  - Applying full morphological filtering for voltage channel 69
+  - Applying full morphological filtering for voltage channel 70
+  - Applying full morphological filtering for voltage channel 71
+  - Applying full morphological filtering for voltage channel 72
+  - Applying full morphological filtering for voltage channel 73
+  - Applying full morphological filtering for voltage channel 74
+  - Applying full morphological filtering for voltage channel 75
+  - Applying full morphological filtering for voltage channel 76
+  - Applying full morphological filtering for voltage channel 77
+  - Applying full morphological filtering for voltage channel 78
+  - Applying full morphological filtering for voltage channel 79
+  - Applying full morphological filtering for voltage channel 80
+  - Applying full morphological filtering for voltage channel 81
+  - Applying full morphological filtering for voltage channel 82
+  - Applying full morphological filtering for voltage channel 83
+  - Applying full morphological filtering for voltage channel 84
+  - Applying full morphological filtering for voltage channel 85
+  - Applying full morphological filtering for voltage channel 86
+  - Applying full morphological filtering for voltage channel 87
+  - Applying full morphological filtering for voltage channel 88
+  - Applying full morphological filtering for voltage channel 89
+  - Applying full morphological filtering for voltage channel 90
+  - Applying full morphological filtering for voltage channel 91
+  - Applying full morphological filtering for voltage channel 92
+  - Applying full morphological filtering for voltage channel 93
+  - Applying full morphological filtering for voltage channel 94
+  - Applying full morphological filtering for voltage channel 95
+  - Applying full morphological filtering for voltage channel 96
+  - Applying full morphological filtering for voltage channel 97
+  - Applying full morphological filtering for voltage channel 98
+  - Applying full morphological filtering for voltage channel 99
+  - Applying full morphological filtering for voltage channel 100
+  - Applying full morphological filtering for voltage channel 101
+  - Applying full morphological filtering for voltage channel 102
+  - Applying full morphological filtering for voltage channel 103
+  - Applying full morphological filtering for voltage channel 104
+  - Applying full morphological filtering for voltage channel 105
+  - Applying full morphological filtering for voltage channel 106
+  - Applying full morphological filtering for voltage channel 107
+  - Applying full morphological filtering for voltage channel 108
+  - Applying full morphological filtering for voltage channel 109
+  - Applying full morphological filtering for voltage channel 110
+  - Applying full morphological filtering for voltage channel 111
+  - Applying full morphological filtering for voltage channel 112
+  - Applying full morphological filtering for voltage channel 113
+  - Applying full morphological filtering for voltage channel 114
+  - Applying full morphological filtering for voltage channel 115
+  - Applying full morphological filtering for voltage channel 116
+  - Applying full morphological filtering for voltage channel 117
+  - Applying full morphological filtering for voltage channel 118
+  - Applying full morphological filtering for voltage channel 119
+  - Applying full morphological filtering for voltage channel 120
+  - Applying full morphological filtering for voltage channel 121
+  - Applying full morphological filtering for voltage channel 122
+  - Applying full morphological filtering for voltage channel 123
+  - Applying full morphological filtering for voltage channel 124
+  - Applying full morphological filtering for voltage channel 125
+  - Applying full morphological filtering for voltage channel 126
+  - Applying full morphological filtering for voltage channel 127
+  - Applying full morphological filtering for voltage channel 128
+  - Applying full morphological filtering for voltage channel 129
+  - Applying full morphological filtering for voltage channel 130
+  - Applying full morphological filtering for voltage channel 131
+  - Applying full morphological filtering for voltage channel 132
+  - Applying full morphological filtering for voltage channel 133
+  - Applying full morphological filtering for voltage channel 134
+  - Applying full morphological filtering for voltage channel 135
+  - Applying full morphological filtering for voltage channel 136
+  - Applying full morphological filtering for voltage channel 137
+  - Applying full morphological filtering for voltage channel 138
+  - Applying full morphological filtering for voltage channel 139
+  - Applying full morphological filtering for voltage channel 140
+  - Applying full morphological filtering for voltage channel 141
+  - Applying full morphological filtering for voltage channel 142
+  - Applying full morphological filtering for voltage channel 143
+  - Applying full morphological filtering for voltage channel 144
+  - Applying full morphological filtering for voltage channel 145
+  - Applying full morphological filtering for voltage channel 146
+  - Applying full morphological filtering for voltage channel 147
+  - Applying full morphological filtering for voltage channel 148
+  - Applying full morphological filtering for voltage channel 149
+  - Applying full morphological filtering for voltage channel 150
+  - Applying full morphological filtering for voltage channel 151
+  - Applying full morphological filtering for voltage channel 152
+  - Applying full morphological filtering for voltage channel 153
+  - Applying full morphological filtering for voltage channel 154
+  - Applying full morphological filtering for voltage channel 155
+  - Applying full morphological filtering for voltage channel 156
+  - Applying full morphological filtering for voltage channel 157
+  - Applying full morphological filtering for voltage channel 158
+  - Applying full morphological filtering for voltage channel 159
+  - Applying full morphological filtering for voltage channel 160
+  - Applying full morphological filtering for voltage channel 161
+  - Applying full morphological filtering for voltage channel 162
+  - Applying full morphological filtering for voltage channel 163
+  - Applying full morphological filtering for voltage channel 164
+  - Applying full morphological filtering for voltage channel 165
+  - Applying full morphological filtering for voltage channel 166
+  - Applying full morphological filtering for voltage channel 167
+  - Applying full morphological filtering for voltage channel 168
+  - Applying full morphological filtering for voltage channel 169
+  - Applying full morphological filtering for voltage channel 170
+  - Applying full morphological filtering for voltage channel 171
+  - Applying full morphological filtering for voltage channel 172
+  - Applying full morphological filtering for voltage channel 173
+  - Applying full morphological filtering for voltage channel 174
+  - Applying full morphological filtering for voltage channel 175
+  - Applying full morphological filtering for voltage channel 176
+  - Applying full morphological filtering for voltage channel 177
+  - Applying full morphological filtering for voltage channel 178
+  - Applying full morphological filtering for voltage channel 179
+  - Applying full morphological filtering for voltage channel 180
+  - Applying full morphological filtering for voltage channel 181
+  - Applying full morphological filtering for voltage channel 182
+  - Applying full morphological filtering for voltage channel 183
+  - Applying full morphological filtering for voltage channel 184
+  - Applying full morphological filtering for voltage channel 185
+  - Applying full morphological filtering for voltage channel 186
+  - Applying full morphological filtering for voltage channel 187
+  - Applying full morphological filtering for voltage channel 188
+  - Applying full morphological filtering for voltage channel 189
+  - Applying full morphological filtering for voltage channel 190
+  - Applying full morphological filtering for voltage channel 191
+  - Applying full morphological filtering for voltage channel 192
+  - Applying full morphological filtering for voltage channel 193
+  - Applying full morphological filtering for voltage channel 194
+  - Applying full morphological filtering for voltage channel 195
+  - Applying full morphological filtering for voltage channel 196
+  - Applying full morphological filtering for voltage channel 197
+  - Applying full morphological filtering for voltage channel 198
+  - Applying full morphological filtering for voltage channel 199
+  - Applying full morphological filtering for voltage channel 200
+  - Applying full morphological filtering for voltage channel 201
+  - Applying full morphological filtering for voltage channel 202
+  - Applying full morphological filtering for voltage channel 203
+  - Applying full morphological filtering for voltage channel 204
+  - Applying full morphological filtering for voltage channel 205
+  - Applying full morphological filtering for voltage channel 206
+  - Applying full morphological filtering for voltage channel 207
+  - Applying full morphological filtering for voltage channel 208
+  - Applying full morphological filtering for voltage channel 209
+  - Applying full morphological filtering for voltage channel 210
+  - Applying full morphological filtering for voltage channel 211
+  - Applying full morphological filtering for voltage channel 212
+  - Applying full morphological filtering for voltage channel 213
+  - Applying full morphological filtering for voltage channel 214
+  - Applying full morphological filtering for voltage channel 215
+  - Applying full morphological filtering for voltage channel 216
+  - Applying full morphological filtering for voltage channel 217
+  - Applying full morphological filtering for voltage channel 218
+  - Applying full morphological filtering for voltage channel 219
+  - Applying full morphological filtering for voltage channel 220
+  - Applying full morphological filtering for voltage channel 221
+  - Applying full morphological filtering for voltage channel 222
+  - Applying full morphological filtering for voltage channel 223
+  - Applying full morphological filtering for voltage channel 224
+  - Applying full morphological filtering for voltage channel 225
+  - Applying full morphological filtering for voltage channel 226
+  - Applying full morphological filtering for voltage channel 227
+  - Applying full morphological filtering for voltage channel 228
+  - Applying full morphological filtering for voltage channel 229
+  - Applying full morphological filtering for voltage channel 230
+  - Applying full morphological filtering for voltage channel 231
+  - Applying full morphological filtering for voltage channel 232
+  - Applying full morphological filtering for voltage channel 233
+  - Applying full morphological filtering for voltage channel 234
+  - Applying full morphological filtering for voltage channel 235
+  - Applying full morphological filtering for voltage channel 236
+  - Applying full morphological filtering for voltage channel 237
+  - Applying full morphological filtering for voltage channel 238
+  - Applying full morphological filtering for voltage channel 239
+  - Applying full morphological filtering for voltage channel 240
+  - Applying full morphological filtering for voltage channel 241
+  - Applying full morphological filtering for voltage channel 242
+  - Applying full morphological filtering for voltage channel 243
+  - Applying full morphological filtering for voltage channel 244
+  - Applying full morphological filtering for voltage channel 245
+  - Applying full morphological filtering for voltage channel 246
+  - Applying full morphological filtering for voltage channel 247
+  - Applying full morphological filtering for voltage channel 248
+  - Applying full morphological filtering for voltage channel 249
+  - Applying full morphological filtering for voltage channel 250
+  - Applying full morphological filtering for voltage channel 251
+  - Applying full morphological filtering for voltage channel 252
+  - Applying full morphological filtering for voltage channel 253
+  - Applying full morphological filtering for voltage channel 254
+  - Applying full morphological filtering for voltage channel 255
+  - Applying full morphological filtering for voltage channel 256
+  - Applying full morphological filtering for voltage channel 257
+Detected 712 voltage events using fixed_std (fixed=0.0500)
+
+=== FILTERING BLEACHING ARTIFACTS: VOLTAGE POST SEGMENT ===
+Filtering bleaching artifacts for voltage (≥5 cells, 70% overlap, start <10.0s)...
+  Found 80 positive bleaching events (cells: [0, 257, 254, 252, 249, 238, 236, 235, 234, 233, 232, 231, 230, 227, 224, 223, 222, 221, 220, 218, 217, 216, 206, 196, 195, 194, 186, 184, 181, 180, 179, 174, 173, 172, 170, 169, 167, 166, 163, 158, 156, 155, 146, 144, 142, 123, 120, 119, 118, 117, 112, 109, 108, 106, 101, 100, 98, 97, 96, 95, 93, 84, 83, 77, 76, 72, 68, 62, 60, 59, 58, 55, 54, 44, 40, 36, 34, 26, 14, 5], times: 0.0-0.0s)
+  Found 228 negative bleaching events (cells: [20, 257, 256, 255, 254, 253, 252, 252, 251, 250, 246, 246, 246, 245, 243, 239, 225, 223, 223, 223, 223, 222, 222, 221, 221, 221, 221, 218, 218, 216, 215, 213, 212, 211, 210, 209, 208, 207, 206, 205, 204, 203, 202, 201, 200, 199, 198, 197, 196, 196, 195, 194, 194, 193, 192, 191, 190, 189, 188, 187, 186, 186, 185, 184, 183, 182, 181, 180, 179, 179, 178, 177, 176, 175, 174, 173, 172, 172, 171, 170, 170, 169, 168, 167, 167, 166, 166, 165, 164, 163, 162, 162, 162, 162, 161, 160, 159, 159, 158, 157, 156, 156, 155, 154, 153, 152, 152, 152, 151, 150, 150, 149, 149, 148, 147, 146, 146, 145, 145, 145, 144, 144, 143, 142, 142, 142, 142, 141, 141, 140, 140, 140, 138, 136, 136, 133, 132, 132, 127, 127, 126, 125, 123, 122, 121, 120, 120, 118, 118, 118, 117, 117, 116, 115, 115, 115, 114, 114, 113, 111, 111, 111, 110, 110, 107, 107, 107, 106, 106, 106, 105, 103, 103, 103, 100, 100, 100, 98, 98, 98, 94, 93, 93, 92, 90, 90, 85, 85, 85, 84, 83, 83, 83, 83, 82, 82, 80, 80, 79, 75, 74, 69, 69, 67, 65, 64, 63, 61, 58, 58, 57, 57, 53, 52, 52, 52, 48, 43, 43, 43, 43, 36, 36, 35, 28, 25, 23, 22], times: 0.0-9.8s)
+  Original voltage events: 712
+  Excluded bleaching artifacts: 308
+  Remaining voltage events: 404
+
+=== FILTERING SIMULTANEOUS EVENTS: VOLTAGE POST SEGMENT ===
+Filtering simultaneous voltage events (max 999 cells, 50% overlap)...
+  Original voltage events: 404
+  Filtered voltage events: 404
+  Excluded voltage events: 0
+FIXED: Using per-channel baselines + fixed STD threshold for voltage visualization...
+  Fixed voltage std: 0.0500
+  Fixed voltage threshold: ±0.1250
+  Using per-channel baselines (as in detection)
+  FIXED voltage plot saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/event_detection_plots/post_voltage_unknown_20250319_slip2_area1_events_perchannel_fixed.png
+Enhanced filtered voltage events saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250319_slip2_area1/events_voltage_unknown_20250319_slip2_area1_fixed_std_adaptive_filtered.csv
+
+FIXED STD VOLTAGE Event Summary for unknown 20250319_slip2_area1:
+  Total filtered events: 404
+  Total excluded events: 308 (50% rule)
+  Pre-segment events: 0
+  Post-segment events: 404
+  Duration stats: mean=24.37s, median=23.20s
+
+=== CALCIUM EVENT DETECTION ===
+Using FIXED STD calcium event detection
+Min duration: 1.0s, Threshold: 2.5σ
+  Using provided fixed std: 0.0500
+  Fixed threshold for all channels: ±0.1250
+  Using per-channel median baselines with fixed STD threshold
+Detecting calcium events using fixed_std approach...
+  - Applying full morphological filtering for voltage channel 0
+  - Applying full morphological filtering for voltage channel 1
+  - Applying full morphological filtering for voltage channel 2
+  - Applying full morphological filtering for voltage channel 3
+  - Applying full morphological filtering for voltage channel 4
+  - Applying full morphological filtering for voltage channel 5
+  - Applying full morphological filtering for voltage channel 6
+  - Applying full morphological filtering for voltage channel 7
+  - Applying full morphological filtering for voltage channel 8
+  - Applying full morphological filtering for voltage channel 9
+  - Applying full morphological filtering for voltage channel 10
+  - Applying full morphological filtering for voltage channel 11
+  - Applying full morphological filtering for voltage channel 12
+  - Applying full morphological filtering for voltage channel 13
+  - Applying full morphological filtering for voltage channel 14
+  - Applying full morphological filtering for voltage channel 15
+  - Applying full morphological filtering for voltage channel 16
+  - Applying full morphological filtering for voltage channel 17
+  - Applying full morphological filtering for voltage channel 18
+  - Applying full morphological filtering for voltage channel 19
+  - Applying full morphological filtering for voltage channel 20
+  - Applying full morphological filtering for voltage channel 21
+  - Applying full morphological filtering for voltage channel 22
+  - Applying full morphological filtering for voltage channel 23
+  - Applying full morphological filtering for voltage channel 24
+  - Applying full morphological filtering for voltage channel 25
+  - Applying full morphological filtering for voltage channel 26
+  - Applying full morphological filtering for voltage channel 27
+  - Applying full morphological filtering for voltage channel 28
+  - Applying full morphological filtering for voltage channel 29
+  - Applying full morphological filtering for voltage channel 30
+  - Applying full morphological filtering for voltage channel 31
+  - Applying full morphological filtering for voltage channel 32
+  - Applying full morphological filtering for voltage channel 33
+  - Applying full morphological filtering for voltage channel 34
+  - Applying full morphological filtering for voltage channel 35
+  - Applying full morphological filtering for voltage channel 36
+  - Applying full morphological filtering for voltage channel 37
+  - Applying full morphological filtering for voltage channel 38
+  - Applying full morphological filtering for voltage channel 39
+  - Applying full morphological filtering for voltage channel 40
+  - Applying full morphological filtering for voltage channel 41
+  - Applying full morphological filtering for voltage channel 42
+  - Applying full morphological filtering for voltage channel 43
+  - Applying full morphological filtering for voltage channel 44
+  - Applying full morphological filtering for voltage channel 45
+  - Applying full morphological filtering for voltage channel 46
+  - Applying full morphological filtering for voltage channel 47
+  - Applying full morphological filtering for voltage channel 48
+  - Applying full morphological filtering for voltage channel 49
+  - Applying full morphological filtering for voltage channel 50
+  - Applying full morphological filtering for voltage channel 51
+  - Applying full morphological filtering for voltage channel 52
+  - Applying full morphological filtering for voltage channel 53
+  - Applying full morphological filtering for voltage channel 54
+  - Applying full morphological filtering for voltage channel 55
+  - Applying full morphological filtering for voltage channel 56
+  - Applying full morphological filtering for voltage channel 57
+  - Applying full morphological filtering for voltage channel 58
+  - Applying full morphological filtering for voltage channel 59
+  - Applying full morphological filtering for voltage channel 60
+  - Applying full morphological filtering for voltage channel 61
+  - Applying full morphological filtering for voltage channel 62
+  - Applying full morphological filtering for voltage channel 63
+  - Applying full morphological filtering for voltage channel 64
+  - Applying full morphological filtering for voltage channel 65
+  - Applying full morphological filtering for voltage channel 66
+  - Applying full morphological filtering for voltage channel 67
+  - Applying full morphological filtering for voltage channel 68
+  - Applying full morphological filtering for voltage channel 69
+  - Applying full morphological filtering for voltage channel 70
+  - Applying full morphological filtering for voltage channel 71
+  - Applying full morphological filtering for voltage channel 72
+  - Applying full morphological filtering for voltage channel 73
+  - Applying full morphological filtering for voltage channel 74
+  - Applying full morphological filtering for voltage channel 75
+  - Applying full morphological filtering for voltage channel 76
+  - Applying full morphological filtering for voltage channel 77
+  - Applying full morphological filtering for voltage channel 78
+  - Applying full morphological filtering for voltage channel 79
+  - Applying full morphological filtering for voltage channel 80
+  - Applying full morphological filtering for voltage channel 81
+  - Applying full morphological filtering for voltage channel 82
+  - Applying full morphological filtering for voltage channel 83
+  - Applying full morphological filtering for voltage channel 84
+  - Applying full morphological filtering for voltage channel 85
+  - Applying full morphological filtering for voltage channel 86
+  - Applying full morphological filtering for voltage channel 87
+  - Applying full morphological filtering for voltage channel 88
+  - Applying full morphological filtering for voltage channel 89
+  - Applying full morphological filtering for voltage channel 90
+  - Applying full morphological filtering for voltage channel 91
+  - Applying full morphological filtering for voltage channel 92
+  - Applying full morphological filtering for voltage channel 93
+  - Applying full morphological filtering for voltage channel 94
+  - Applying full morphological filtering for voltage channel 95
+  - Applying full morphological filtering for voltage channel 96
+  - Applying full morphological filtering for voltage channel 97
+  - Applying full morphological filtering for voltage channel 98
+  - Applying full morphological filtering for voltage channel 99
+  - Applying full morphological filtering for voltage channel 100
+  - Applying full morphological filtering for voltage channel 101
+  - Applying full morphological filtering for voltage channel 102
+  - Applying full morphological filtering for voltage channel 103
+  - Applying full morphological filtering for voltage channel 104
+  - Applying full morphological filtering for voltage channel 105
+  - Applying full morphological filtering for voltage channel 106
+  - Applying full morphological filtering for voltage channel 107
+  - Applying full morphological filtering for voltage channel 108
+  - Applying full morphological filtering for voltage channel 109
+  - Applying full morphological filtering for voltage channel 110
+  - Applying full morphological filtering for voltage channel 111
+  - Applying full morphological filtering for voltage channel 112
+  - Applying full morphological filtering for voltage channel 113
+  - Applying full morphological filtering for voltage channel 114
+  - Applying full morphological filtering for voltage channel 115
+  - Applying full morphological filtering for voltage channel 116
+  - Applying full morphological filtering for voltage channel 117
+  - Applying full morphological filtering for voltage channel 118
+  - Applying full morphological filtering for voltage channel 119
+  - Applying full morphological filtering for voltage channel 120
+  - Applying full morphological filtering for voltage channel 121
+  - Applying full morphological filtering for voltage channel 122
+  - Applying full morphological filtering for voltage channel 123
+  - Applying full morphological filtering for voltage channel 124
+  - Applying full morphological filtering for voltage channel 125
+  - Applying full morphological filtering for voltage channel 126
+  - Applying full morphological filtering for voltage channel 127
+  - Applying full morphological filtering for voltage channel 128
+  - Applying full morphological filtering for voltage channel 129
+  - Applying full morphological filtering for voltage channel 130
+  - Applying full morphological filtering for voltage channel 131
+  - Applying full morphological filtering for voltage channel 132
+  - Applying full morphological filtering for voltage channel 133
+  - Applying full morphological filtering for voltage channel 134
+  - Applying full morphological filtering for voltage channel 135
+  - Applying full morphological filtering for voltage channel 136
+  - Applying full morphological filtering for voltage channel 137
+  - Applying full morphological filtering for voltage channel 138
+  - Applying full morphological filtering for voltage channel 139
+  - Applying full morphological filtering for voltage channel 140
+  - Applying full morphological filtering for voltage channel 141
+  - Applying full morphological filtering for voltage channel 142
+  - Applying full morphological filtering for voltage channel 143
+  - Applying full morphological filtering for voltage channel 144
+  - Applying full morphological filtering for voltage channel 145
+  - Applying full morphological filtering for voltage channel 146
+  - Applying full morphological filtering for voltage channel 147
+  - Applying full morphological filtering for voltage channel 148
+  - Applying full morphological filtering for voltage channel 149
+  - Applying full morphological filtering for voltage channel 150
+  - Applying full morphological filtering for voltage channel 151
+  - Applying full morphological filtering for voltage channel 152
+  - Applying full morphological filtering for voltage channel 153
+  - Applying full morphological filtering for voltage channel 154
+  - Applying full morphological filtering for voltage channel 155
+  - Applying full morphological filtering for voltage channel 156
+  - Applying full morphological filtering for voltage channel 157
+  - Applying full morphological filtering for voltage channel 158
+  - Applying full morphological filtering for voltage channel 159
+  - Applying full morphological filtering for voltage channel 160
+  - Applying full morphological filtering for voltage channel 161
+  - Applying full morphological filtering for voltage channel 162
+  - Applying full morphological filtering for voltage channel 163
+  - Applying full morphological filtering for voltage channel 164
+  - Applying full morphological filtering for voltage channel 165
+  - Applying full morphological filtering for voltage channel 166
+  - Applying full morphological filtering for voltage channel 167
+  - Applying full morphological filtering for voltage channel 168
+  - Applying full morphological filtering for voltage channel 169
+  - Applying full morphological filtering for voltage channel 170
+  - Applying full morphological filtering for voltage channel 171
+  - Applying full morphological filtering for voltage channel 172
+  - Applying full morphological filtering for voltage channel 173
+  - Applying full morphological filtering for voltage channel 174
+  - Applying full morphological filtering for voltage channel 175
+  - Applying full morphological filtering for voltage channel 176
+  - Applying full morphological filtering for voltage channel 177
+  - Applying full morphological filtering for voltage channel 178
+  - Applying full morphological filtering for voltage channel 179
+  - Applying full morphological filtering for voltage channel 180
+  - Applying full morphological filtering for voltage channel 181
+  - Applying full morphological filtering for voltage channel 182
+  - Applying full morphological filtering for voltage channel 183
+  - Applying full morphological filtering for voltage channel 184
+  - Applying full morphological filtering for voltage channel 185
+  - Applying full morphological filtering for voltage channel 186
+  - Applying full morphological filtering for voltage channel 187
+  - Applying full morphological filtering for voltage channel 188
+  - Applying full morphological filtering for voltage channel 189
+  - Applying full morphological filtering for voltage channel 190
+  - Applying full morphological filtering for voltage channel 191
+  - Applying full morphological filtering for voltage channel 192
+  - Applying full morphological filtering for voltage channel 193
+  - Applying full morphological filtering for voltage channel 194
+  - Applying full morphological filtering for voltage channel 195
+  - Applying full morphological filtering for voltage channel 196
+  - Applying full morphological filtering for voltage channel 197
+  - Applying full morphological filtering for voltage channel 198
+  - Applying full morphological filtering for voltage channel 199
+  - Applying full morphological filtering for voltage channel 200
+  - Applying full morphological filtering for voltage channel 201
+  - Applying full morphological filtering for voltage channel 202
+  - Applying full morphological filtering for voltage channel 203
+  - Applying full morphological filtering for voltage channel 204
+  - Applying full morphological filtering for voltage channel 205
+  - Applying full morphological filtering for voltage channel 206
+  - Applying full morphological filtering for voltage channel 207
+  - Applying full morphological filtering for voltage channel 208
+  - Applying full morphological filtering for voltage channel 209
+  - Applying full morphological filtering for voltage channel 210
+  - Applying full morphological filtering for voltage channel 211
+  - Applying full morphological filtering for voltage channel 212
+  - Applying full morphological filtering for voltage channel 213
+  - Applying full morphological filtering for voltage channel 214
+  - Applying full morphological filtering for voltage channel 215
+  - Applying full morphological filtering for voltage channel 216
+  - Applying full morphological filtering for voltage channel 217
+  - Applying full morphological filtering for voltage channel 218
+  - Applying full morphological filtering for voltage channel 219
+  - Applying full morphological filtering for voltage channel 220
+  - Applying full morphological filtering for voltage channel 221
+  - Applying full morphological filtering for voltage channel 222
+  - Applying full morphological filtering for voltage channel 223
+  - Applying full morphological filtering for voltage channel 224
+  - Applying full morphological filtering for voltage channel 225
+  - Applying full morphological filtering for voltage channel 226
+  - Applying full morphological filtering for voltage channel 227
+  - Applying full morphological filtering for voltage channel 228
+  - Applying full morphological filtering for voltage channel 229
+  - Applying full morphological filtering for voltage channel 230
+  - Applying full morphological filtering for voltage channel 231
+  - Applying full morphological filtering for voltage channel 232
+  - Applying full morphological filtering for voltage channel 233
+  - Applying full morphological filtering for voltage channel 234
+  - Applying full morphological filtering for voltage channel 235
+  - Applying full morphological filtering for voltage channel 236
+  - Applying full morphological filtering for voltage channel 237
+  - Applying full morphological filtering for voltage channel 238
+  - Applying full morphological filtering for voltage channel 239
+  - Applying full morphological filtering for voltage channel 240
+  - Applying full morphological filtering for voltage channel 241
+  - Applying full morphological filtering for voltage channel 242
+  - Applying full morphological filtering for voltage channel 243
+  - Applying full morphological filtering for voltage channel 244
+  - Applying full morphological filtering for voltage channel 245
+  - Applying full morphological filtering for voltage channel 246
+  - Applying full morphological filtering for voltage channel 247
+  - Applying full morphological filtering for voltage channel 248
+  - Applying full morphological filtering for voltage channel 249
+  - Applying full morphological filtering for voltage channel 250
+  - Applying full morphological filtering for voltage channel 251
+  - Applying full morphological filtering for voltage channel 252
+  - Applying full morphological filtering for voltage channel 253
+  - Applying full morphological filtering for voltage channel 254
+  - Applying full morphological filtering for voltage channel 255
+  - Applying full morphological filtering for voltage channel 256
+  - Applying full morphological filtering for voltage channel 257
+Detected 4658 calcium events using fixed_std (fixed=0.0500)
+
+=== FILTERING BLEACHING ARTIFACTS: CALCIUM POST SEGMENT ===
+Filtering bleaching artifacts for calcium (≥5 cells, 70% overlap, start <10.0s)...
+  Found 21 positive bleaching events (cells: [5, 243, 234, 196, 170, 179, 151, 142, 150, 161, 98, 98, 92, 109, 121, 95, 95, 78, 6, 50, 40], times: 0.0-10.0s)
+  Found 124 negative bleaching events (cells: [0, 254, 253, 246, 246, 246, 246, 244, 237, 236, 236, 235, 234, 233, 226, 217, 217, 216, 213, 213, 211, 211, 208, 207, 207, 206, 205, 201, 190, 189, 180, 176, 182, 176, 174, 173, 168, 168, 167, 166, 166, 166, 165, 165, 165, 164, 164, 162, 162, 160, 160, 159, 157, 155, 148, 151, 151, 151, 151, 148, 148, 148, 135, 129, 129, 128, 127, 125, 122, 120, 120, 120, 117, 117, 116, 111, 110, 110, 110, 107, 107, 106, 106, 101, 101, 99, 97, 97, 97, 87, 86, 86, 86, 86, 84, 82, 82, 82, 81, 81, 77, 77, 67, 61, 58, 58, 57, 57, 57, 55, 54, 48, 43, 40, 36, 30, 30, 25, 17, 7, 5, 1, 1, 1], times: 0.0-9.0s)
+  Original calcium events: 4658
+  Excluded bleaching artifacts: 145
+  Remaining calcium events: 4513
+
+=== FILTERING SIMULTANEOUS EVENTS: CALCIUM POST SEGMENT ===
+Filtering simultaneous calcium events (max 999 cells, 50% overlap)...
+  Original calcium events: 4513
+  Filtered calcium events: 4513
+  Excluded calcium events: 0
+FIXED: Using per-channel baselines + fixed STD threshold for calcium visualization...
+  Fixed calcium std: 0.0500
+  Fixed calcium threshold: ±0.1250
+  Using per-channel baselines (as in detection)
+  FIXED calcium plot saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/event_detection_plots/post_calcium_unknown_20250319_slip2_area1_events_perchannel_fixed.png
+Enhanced filtered calcium events saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250319_slip2_area1/events_calcium_unknown_20250319_slip2_area1_fixed_std_adaptive_filtered.csv
+
+FIXED STD CALCIUM Event Summary for unknown 20250319_slip2_area1:
+  Total filtered events: 4513
+  Total excluded events: 145 (50% rule)
+  Pre-segment events: 0
+  Post-segment events: 4513
+  Duration stats: mean=25.35s, median=23.80s
+✓ Pipeline completed for 20250319_slip2_area1
+3 4
+3 5
+3 6
+3 7
+3 8
+3 9
+3 10
+3 11
+3 12
+3 13
+3 14
+3 15
+3 16
+3 17
+3 18
+3 19
+
+============================================
+
+        Job resource usage summary 
+
+                 Memory (GB)    NCPUs
+ Requested  :        64            32
+ Used       :         8 (peak)  16.45 (ave)
+
+============================================

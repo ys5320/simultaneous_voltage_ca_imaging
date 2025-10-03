@@ -1,0 +1,60 @@
+Original path: /rds/general/user/be320/projects/thefarm2/live/Firefly/Calcium_Voltage_Imaging/MDA_MB_468/20250226/slip1/area1/20250226_slip1_area1_A01_50uM_1
+Fixed path: /rds/general/user/ys5320/projects/thefarm2/live/Firefly/Calcium_Voltage_Imaging/MDA_MB_468/20250226/slip1/area1/20250226_slip1_area1_A01_50uM_1
+18 0
+18 1
+18 2
+18 3
+18 4
+18 5
+18 6
+18 7
+18 8
+18 9
+18 10
+18 11
+18 12
+18 13
+18 14
+18 15
+18 16
+18 17
+20250327_slip4_area2
+['20250327_slip4_area2_condition_e_1_MMStack_Default.ome.tif', '20250327_slip4_area2_condition_e_1_MMStack_Default_1.ome.tif']
+Loaded Z-stack shape: (10000, 512, 512)
+(5000, 512, 512) (5000, 512, 512)
+(5000, 512, 512) (5000, 512, 512)
+✅ Saved enhanced_voltage_video.avi at 1000 FPS in /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250327_slip4_area2
+✅ Saved enhanced_calcium_video.avi at 1000 FPS in /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250327_slip4_area2
+18 19
+18 0
+18 1
+18 2
+18 3
+18 4
+18 5
+18 6
+18 7
+18 8
+18 9
+18 10
+18 11
+18 12
+18 13
+18 14
+18 15
+18 16
+18 17
+
+Processing pipeline for trial: 20250327_slip4_area2
+  ⚠ Missing timeseries files for 20250327_slip4_area2 (full), skipping
+18 19
+
+============================================
+
+        Job resource usage summary 
+
+                 Memory (GB)    NCPUs
+ Requested  :        64            32
+ Used       :         9 (peak)   9.10 (ave)
+
+============================================

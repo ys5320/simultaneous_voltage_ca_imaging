@@ -16,7 +16,7 @@ def make_videos(df_file, top_dir, HPC_num = None):
                 print(HPC_num, idx)
                 continue
         print(data.trial_string)
-        save_dir = Path(top_dir,'analysis','results_profiles',f'{data.trial_string}')
+        save_dir = Path(top_dir,'analysis','results_pipeline',f'{data.trial_string}')
         save_dir.mkdir(parents=True, exist_ok=True)
         folder_path = Path(data.folder)
 
