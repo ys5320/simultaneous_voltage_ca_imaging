@@ -19,7 +19,7 @@ else:
     data_dir = Path('R:/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis')
 
 # Define paths
-results_pipeline_dir = data_dir / 'results_pipeline'
+results_pipeline_dir = data_dir / 'results_profiles'
 dataframes_dir = data_dir / 'dataframes'
 df_path = dataframes_dir / 'MDA_MB_468_dataframe_tc_extracted.csv'
 
@@ -32,7 +32,7 @@ def load_timeseries_data_by_toxin(toxin, data_type='voltage', segment='pre'):
     df = df[df['use'] != 'n']
     
     # Filter by toxin
-    toxin_trials = df[df['expt'].str.contains(toxin, na=False)]['trial_string'].unique()
+    toxin_trials = df[df['expt'].str.contains(toxin, case=False, na=False)]['trial_string'].unique()
     
     # Debug: Print filtered trials
     print(f"\n=== Loading {data_type} {segment} for toxin: {toxin} ===")
@@ -139,9 +139,10 @@ def calculate_event_rates_for_toxin(toxin):
             # Load event data
             events = load_event_data_by_toxin(toxin, data_type, segment)
             
-            # Filter events: only keep events with duration >= 5s
+            # Filter events: only keep events with duration > 5s
             if events is not None:
-                events = events[events['duration_sec'] >= 5]
+                events = events[events['duration_sec'] > 5]
+                events = events[events['duration_sec'] < 50]
             
             # Load timeseries data to get total cell count and frame count
             timeseries_data, trials = load_timeseries_data_by_toxin(toxin, data_type, segment)
@@ -193,7 +194,8 @@ def load_event_data_by_toxin(toxin, data_type='voltage', segment='pre'):
     df = df[df['use'] != 'n']
     
     # Filter by toxin
-    toxin_trials = df[df['expt'].str.contains(toxin, na=False)]['trial_string'].unique()
+    #toxin_trials = df[df['expt'].str.contains(toxin, case=False, na=False)]['trial_string'].unique()
+    toxin_trials = df[df['expt'] == toxin]['trial_string']
     
     # Debug: Print filtered trials
     print(f"\n=== Loading EVENT data: {data_type} {segment} for toxin: {toxin} ===")
@@ -350,20 +352,26 @@ def plot_event_rate_comparison(event_data, toxin, save_path=None, stat_test='boo
         
         if len(type_data) > 0:
             # Create swarm plot
-            sns.stripplot(data=type_data, x='segment', y='event_rate_per_100s', ax=ax, size=10, order=['pre', 'post'])
+            sns.swarmplot(data=type_data, x='segment', y='event_rate_per_100s', ax=ax, 
+                         size=10, order=['pre', 'post'])
             
             # Remove top and right spines
             ax.spines['right'].set_visible(False)
             ax.spines['top'].set_visible(False)
             
+            # Set spine width to 2pt
+            ax.spines['left'].set_linewidth(2)
+            ax.spines['bottom'].set_linewidth(2)
+            
             # Set title based on data type
             if data_type == 'voltage':
-                ax.set_title('Voltage Positive Event Rate')
+                ax.set_title('Voltage Hyperpolarization Event Rate')
             else:
-                ax.set_title('Calcium Positive Event Rate')
+                ax.set_title('Calcium Event Rate')
             
             ax.set_ylabel('Events per 100s')
             ax.set_xlabel('')
+            
             
             # Set x-tick labels with formatted toxin name
             parts = formatted_toxin.split()
@@ -371,6 +379,12 @@ def plot_event_rate_comparison(event_data, toxin, save_path=None, stat_test='boo
                 ax.set_xticklabels(['Pre', f'With {parts[-1]} {parts[-2]}'])
             else:
                 ax.set_xticklabels(['Pre', f'With {formatted_toxin}'])
+                
+            # Manual formatting for specific toxins
+            if toxin == '4AP':
+                ax.set_xticklabels(['Pre', f'With 5mM 4AP'])
+            if toxin == 'Ca_free':
+                ax.set_xticklabels(['Pre', r'With Ca$^{2+}$ Free External'])
             
             # Statistical comparison
             pre_data = type_data[type_data['segment'] == 'pre']['event_rate_per_100s'].values
@@ -380,17 +394,13 @@ def plot_event_rate_comparison(event_data, toxin, save_path=None, stat_test='boo
                 pairs = [('pre', 'post')]
                 
                 if stat_test == 'bootstrap':
-                    # Calculate bootstrap p-value
                     p_value = statsf.bootstrap_test(pre_data, post_data)[0]
                     pvalues = [p_value]
-                    
-                    # Use Annotator to display bootstrap results
                     annotator = Annotator(ax, pairs, data=type_data, x='segment', y='event_rate_per_100s')
                     annotator.configure(text_format='simple')
                     annotator.set_pvalues(pvalues).annotate()
                     
                 elif stat_test == 'mann-whitney':
-                    # Use Mann-Whitney test
                     annotator = Annotator(ax, pairs, data=type_data, x='segment', y='event_rate_per_100s')
                     annotator.configure(test='Mann-Whitney', text_format='simple', show_test_name=False)
                     annotator.apply_and_annotate()
@@ -398,17 +408,17 @@ def plot_event_rate_comparison(event_data, toxin, save_path=None, stat_test='boo
             ax.text(0.5, 0.5, f'No data for {data_type}', ha='center', va='center', transform=ax.transAxes)
             ax.spines['right'].set_visible(False)
             ax.spines['top'].set_visible(False)
+            ax.spines['left'].set_linewidth(2)
+            ax.spines['bottom'].set_linewidth(2)
     
-    plt.suptitle(f'Event Rate Comparison - {formatted_toxin}', fontsize=20)
     plt.tight_layout()
     
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight', transparent=True)
-        # Also save as EPS
         eps_path = str(save_path).replace('.png', '.eps')
         plt.savefig(eps_path, dpi=300, bbox_inches='tight', transparent=True)
-        print(f"Figure saved to: {save_path}")
-        print(f"EPS saved to: {eps_path}")
+        print(f"Event Rate Figure saved to: {save_path}")
+        print(f"Event Rate EPS saved to: {eps_path}")
     
     plt.show()
 
@@ -425,11 +435,11 @@ def analyze_toxin(toxin, save_dir=None):
     """
     print(f"Analyzing toxin: {toxin}")
     print("="*50)
-    
+
     # Calculate standard deviation data
     print("Loading standard deviation data...")
     std_data = calculate_std_for_toxin(toxin)
-    
+
     # Calculate event rate data
     print("Loading event rate data...")
     event_data = calculate_event_rates_for_toxin(toxin)
@@ -462,6 +472,7 @@ def analyze_toxin(toxin, save_dir=None):
 if __name__ == "__main__":
     # Define toxins to analyze
     toxins = ['Ani9_10uM', 'L-15_control', 'ATP_1mM', 'TRAM-34_1uM', 'dantrolene_10uM', 'DMSO_0.1%_control']
+    toxins = ['4AP','dantrolene_10uM','Thapsigargin_1uM','Ca_free']
     toxins = ['Ca_free']
     
     # Create save directory
@@ -471,6 +482,7 @@ if __name__ == "__main__":
     all_results = {}
     for toxin in toxins:
         try:
+
             std_data, event_data = analyze_toxin(toxin, save_dir)
             all_results[toxin] = {'std_data': std_data, 'event_data': event_data}
         except Exception as e:
