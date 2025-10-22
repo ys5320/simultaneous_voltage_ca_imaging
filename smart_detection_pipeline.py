@@ -37,6 +37,12 @@ def determine_toxin_from_trial(trial_string, filename):
         return 'dantrolene_10uM'
     elif 'dmso' in filename_lower:
         return 'DMSO_0.1%_control'
+    elif 'ca_free' in filename_lower:
+        return 'Ca_free'
+    elif 'thapsigargin' in filename_lower:
+        return 'Thapsigargin'
+    elif '4AP' in filename:
+        return '4AP'
     else:
         return 'unknown'  # Handle as needed
 
@@ -413,7 +419,7 @@ def plot_raw_and_filtered_segment(raw_segment, processed_segment, non_gaussian_s
     return plot_path
 
 def detect_voltage_events_enhanced_threshold(data_segment, sampling_rate_hz=5, threshold_multiplier=2.5, 
-                                            apply_gaussian_for_detection=False, min_event_duration_sec=1.0, 
+                                            apply_gaussian_for_detection=False, min_event_duration_sec=7.0, 
                                             use_global_threshold=True, use_fixed_std=False, fixed_std_value=None,
                                             cell_id_mapping=None, data_type="voltage", **kwargs):
     """
@@ -648,6 +654,29 @@ def detect_voltage_events_enhanced_threshold(data_segment, sampling_rate_hz=5, t
     
     strategy_name = f"{threshold_strategy} (fixed={fixed_std_value:.4f})" if use_fixed_std else threshold_strategy
     print(f"Detected {len(events_list)} {data_type} events using {strategy_name}")
+    
+    #DEDUPLICATION HERE:
+    if len(events_list) > 0:
+        import pandas as pd
+        
+        # Convert to DataFrame for easier deduplication
+        events_df = pd.DataFrame(events_list)
+        
+        n_before = len(events_df)
+        
+        # Remove duplicates based on cell ID and timing
+        events_df = events_df.drop_duplicates(
+            subset=['original_cell_id', 'start_sample', 'end_sample'], 
+            keep='first'
+        )
+        
+        n_after = len(events_df)
+        
+        if n_before > n_after:
+            print(f"  Removed {n_before - n_after} duplicate {data_type} events")
+        
+        # Convert back to list of dictionaries
+        events_list = events_df.to_dict('records')
     
     # Return threshold info for plotting
     threshold_data = np.tile(np.array(channel_thresholds)[:, np.newaxis], (1, n_timepoints))

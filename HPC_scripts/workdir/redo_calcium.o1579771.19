@@ -1,0 +1,303 @@
+Original path: /rds/general/user/be320/projects/thefarm2/live/Firefly/Calcium_Voltage_Imaging/MDA_MB_468/20250127/slip3/20250127_slip3_area1_468/20250127_slip3_area1_exp3ms_4AP_5mM_1
+Fixed path: /rds/general/user/ys5320/projects/thefarm2/live/Firefly/Calcium_Voltage_Imaging/MDA_MB_468/20250127/slip3/20250127_slip3_area1_468/20250127_slip3_area1_exp3ms_4AP_5mM_1
+18 0
+18 1
+18 2
+18 3
+18 4
+18 5
+18 6
+18 7
+18 8
+18 9
+18 10
+18 11
+18 12
+18 13
+18 14
+18 15
+18 16
+18 17
+20250307_slip1_area3
+['20250307_slip1_area3_Thapsigargin_1uM_60min_post_1_MMStack_Default.ome.tif', '20250307_slip1_area3_Thapsigargin_1uM_60min_post_1_MMStack_Default_1.ome.tif']
+Loaded Z-stack shape: (10000, 512, 512)
+(5000, 512, 512) (5000, 512, 512)
+(5000, 512, 512) (5000, 512, 512)
+✅ Saved enhanced_voltage_video.avi at 1000 FPS in /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250307_slip1_area3
+✅ Saved enhanced_calcium_video.avi at 1000 FPS in /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_pipeline/20250307_slip1_area3
+18 19
+18 20
+18 21
+18 22
+18 23
+18 24
+18 25
+18 26
+18 27
+18 28
+18 29
+18 30
+18 31
+18 32
+18 33
+18 34
+18 35
+18 36
+18 37
+18 38
+18 39
+18 40
+18 41
+18 42
+18 43
+18 44
+18 45
+18 46
+18 47
+18 48
+18 49
+18 50
+18 51
+18 52
+18 53
+18 54
+18 55
+18 56
+18 57
+18 58
+18 59
+18 60
+18 61
+18 62
+18 63
+18 64
+18 65
+18 66
+18 67
+18 68
+18 0
+18 1
+18 2
+18 3
+18 4
+18 5
+18 6
+18 7
+18 8
+18 9
+18 10
+18 11
+18 12
+18 13
+18 14
+18 15
+18 16
+18 17
+
+Processing pipeline for trial: 20250307_slip1_area3_post
+Processing trial: 20250307_slip1_area3_post
+Voltage file: 20250307_slip1_area3_Thapsigargin_1uM_60min_post_voltage_transfected.csv
+Calcium file: 20250307_slip1_area3_Thapsigargin_1uM_60min_post_ca_transfected.csv
+--------------------------------------------------------------------------------
+Loading voltage and calcium data...
+Detected: post_only with 5000 datapoints
+Detected: post_only with 5000 datapoints
+Voltage cells: 20, Calcium cells: 20
+=== POST-ONLY FILES - SKIPPING SEGMENTATION ===
+=== STEP 1: Normalization + High-Pass Filter to Full VOLTAGE Timeseries ===
+Applying normalization to raw voltage data (before filtering)...
+  - Min-max normalization applied to voltage (range: [-1, 1])
+Applying high-pass filter to normalized voltage data (cutoff: 0.01 Hz)...
+Normalization + High-pass filtering complete for voltage. Shape: (20, 5000)
+=== STEP 1: Normalization + High-Pass Filter to Full CALCIUM Timeseries ===
+Applying normalization to raw calcium data (before filtering)...
+  - Min-max normalization applied to calcium (range: [-1, 1])
+Applying high-pass filter to normalized calcium data (cutoff: 0.01 Hz)...
+Normalization + High-pass filtering complete for calcium. Shape: (20, 5000)
+  - voltage Gaussian filtering applied (sigma=3)
+  Voltage data saved with original cell IDs to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_profiles/20250307_slip1_area3_post/post_voltage_unknown_20250307_slip1_area3_post.csv
+  Voltage RAW data saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_profiles/20250307_slip1_area3_post/post_voltage_unknown_20250307_slip1_area3_post_raw.csv
+  - calcium Gaussian filtering applied (sigma=3)
+  Calcium data saved with original cell IDs to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_profiles/20250307_slip1_area3_post/post_calcium_unknown_20250307_slip1_area3_post.csv
+  Calcium RAW data saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_profiles/20250307_slip1_area3_post/post_calcium_unknown_20250307_slip1_area3_post_raw.csv
+=== CREATING POST-ONLY VIDEO ===
+=== CREATING POST-ONLY VIDEOS FOR 20250307_slip1_area3_post ===
+  Using TIFF files: ['20250307_slip1_area3_Thapsigargin_1uM_60min_post_1_MMStack_Default.ome.tif', '20250307_slip1_area3_Thapsigargin_1uM_60min_post_1_MMStack_Default_1.ome.tif']
+  Loaded Z-stack shape: (10000, 512, 512)
+  Deinterleaved shapes: V=(5000, 512, 512), Ca=(5000, 512, 512)
+  Creating post-only videos: entire recording (frames 0-4999)
+✅ Saved post_voltage_20250307_slip1_area3_post.avi at 1000 FPS in /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_profiles/20250307_slip1_area3_post
+✅ Saved post_calcium_20250307_slip1_area3_post.avi at 1000 FPS in /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_profiles/20250307_slip1_area3_post
+  ✓ Created post-only videos: post_voltage_20250307_slip1_area3_post.avi & post_calcium_20250307_slip1_area3_post.avi
+
+=== VOLTAGE EVENT DETECTION ===
+Using FIXED STD voltage event detection
+Min duration: 6.5s, Threshold: 2.5σ
+  Using provided fixed std: 0.0600
+  Fixed threshold for all channels: ±0.1500
+  Using per-channel median baselines with fixed STD threshold
+Detecting voltage events using fixed_std approach...
+  - Applying full morphological filtering for voltage channel 0
+  - Applying full morphological filtering for voltage channel 1
+  - Applying full morphological filtering for voltage channel 2
+  - Applying full morphological filtering for voltage channel 3
+  - Applying full morphological filtering for voltage channel 4
+  - Applying full morphological filtering for voltage channel 5
+  - Applying full morphological filtering for voltage channel 6
+  - Applying full morphological filtering for voltage channel 7
+  - Applying full morphological filtering for voltage channel 8
+  - Applying full morphological filtering for voltage channel 9
+  - Applying full morphological filtering for voltage channel 10
+  - Applying full morphological filtering for voltage channel 11
+  - Applying full morphological filtering for voltage channel 12
+  - Applying full morphological filtering for voltage channel 13
+  - Applying full morphological filtering for voltage channel 14
+  - Applying full morphological filtering for voltage channel 15
+  - Applying full morphological filtering for voltage channel 16
+  - Applying full morphological filtering for voltage channel 17
+  - Applying full morphological filtering for voltage channel 18
+  - Applying full morphological filtering for voltage channel 19
+Detected 32 voltage events using fixed_std (fixed=0.0600)
+  Removed 1 duplicate voltage events
+
+=== FILTERING BLEACHING ARTIFACTS: VOLTAGE POST SEGMENT ===
+Filtering bleaching artifacts for voltage (≥5 cells, 70% overlap, start <10.0s)...
+  Found 20 negative bleaching events (cells: [0, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1], times: 0.0-0.6s)
+  Original voltage events: 31
+  Excluded bleaching artifacts: 20
+  Remaining voltage events: 11
+
+=== FILTERING SIMULTANEOUS EVENTS: VOLTAGE POST SEGMENT ===
+Filtering simultaneous voltage events (max 999 cells, 50% overlap)...
+  Original voltage events: 11
+  Filtered voltage events: 11
+  Excluded voltage events: 0
+FIXED: Using per-channel baselines + fixed STD threshold for voltage visualization...
+  Fixed voltage std: 0.0600
+  Fixed voltage threshold: ±0.1500
+  Using per-channel baselines (as in detection)
+  FIXED voltage plot saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_profiles/event_detection_plots/post_voltage_unknown_20250307_slip1_area3_post_events_perchannel_fixed.png
+Enhanced filtered voltage events saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_profiles/20250307_slip1_area3_post/events_voltage_unknown_20250307_slip1_area3_post_fixed_std_adaptive_filtered.csv
+
+FIXED STD VOLTAGE Event Summary for unknown 20250307_slip1_area3_post:
+  Total filtered events: 11
+  Total excluded events: 20 (50% rule)
+  Pre-segment events: 0
+  Post-segment events: 11
+  Duration stats: mean=32.93s, median=30.80s
+
+=== CALCIUM EVENT DETECTION ===
+Using FIXED STD calcium event detection
+Min duration: 6.5s, Threshold: 2.5σ
+  Using provided fixed std: 0.0600
+  Fixed threshold for all channels: ±0.1500
+  Using per-channel median baselines with fixed STD threshold
+Detecting calcium events using fixed_std approach...
+  - Applying full morphological filtering for voltage channel 0
+  - Applying full morphological filtering for voltage channel 1
+  - Applying full morphological filtering for voltage channel 2
+  - Applying full morphological filtering for voltage channel 3
+  - Applying full morphological filtering for voltage channel 4
+  - Applying full morphological filtering for voltage channel 5
+  - Applying full morphological filtering for voltage channel 6
+  - Applying full morphological filtering for voltage channel 7
+  - Applying full morphological filtering for voltage channel 8
+  - Applying full morphological filtering for voltage channel 9
+  - Applying full morphological filtering for voltage channel 10
+  - Applying full morphological filtering for voltage channel 11
+  - Applying full morphological filtering for voltage channel 12
+  - Applying full morphological filtering for voltage channel 13
+  - Applying full morphological filtering for voltage channel 14
+  - Applying full morphological filtering for voltage channel 15
+  - Applying full morphological filtering for voltage channel 16
+  - Applying full morphological filtering for voltage channel 17
+  - Applying full morphological filtering for voltage channel 18
+  - Applying full morphological filtering for voltage channel 19
+Detected 17 calcium events using fixed_std (fixed=0.0600)
+  Removed 1 duplicate calcium events
+
+=== FILTERING BLEACHING ARTIFACTS: CALCIUM POST SEGMENT ===
+Filtering bleaching artifacts for calcium (≥5 cells, 70% overlap, start <10.0s)...
+  Original calcium events: 16
+  Excluded bleaching artifacts: 0
+  Remaining calcium events: 16
+
+=== FILTERING SIMULTANEOUS EVENTS: CALCIUM POST SEGMENT ===
+Filtering simultaneous calcium events (max 999 cells, 50% overlap)...
+  Original calcium events: 16
+  Filtered calcium events: 16
+  Excluded calcium events: 0
+FIXED: Using per-channel baselines + fixed STD threshold for calcium visualization...
+  Fixed calcium std: 0.0600
+  Fixed calcium threshold: ±0.1500
+  Using per-channel baselines (as in detection)
+  FIXED calcium plot saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_profiles/event_detection_plots/post_calcium_unknown_20250307_slip1_area3_post_events_perchannel_fixed.png
+Enhanced filtered calcium events saved to: /rds/general/user/ys5320/home/firefly_link/Calcium_Voltage_Imaging/MDA_MB_468/analysis/results_profiles/20250307_slip1_area3_post/events_calcium_unknown_20250307_slip1_area3_post_fixed_std_adaptive_filtered.csv
+
+FIXED STD CALCIUM Event Summary for unknown 20250307_slip1_area3_post:
+  Total filtered events: 16
+  Total excluded events: 0 (50% rule)
+  Pre-segment events: 0
+  Post-segment events: 16
+  Duration stats: mean=28.75s, median=28.70s
+✓ Pipeline completed for 20250307_slip1_area3
+18 19
+18 20
+18 21
+18 22
+18 23
+18 24
+18 25
+18 26
+18 27
+18 28
+18 29
+18 30
+18 31
+18 32
+18 33
+18 34
+18 35
+18 36
+18 37
+18 38
+18 39
+18 40
+18 41
+18 42
+18 43
+18 44
+18 45
+18 46
+18 47
+18 48
+18 49
+18 50
+18 51
+18 52
+18 53
+18 54
+18 55
+18 56
+18 57
+18 58
+18 59
+18 60
+18 61
+18 62
+18 63
+18 64
+18 65
+18 66
+18 67
+18 68
+
+============================================
+
+        Job resource usage summary 
+
+                 Memory (GB)    NCPUs
+ Requested  :        64            32
+ Used       :         8 (peak)  16.94 (ave)
+
+============================================

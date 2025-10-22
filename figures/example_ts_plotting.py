@@ -29,9 +29,12 @@ def plot_targeted_cells_timeseries(toxin, trial_string, target_cells,
     save_dir.mkdir(parents=True, exist_ok=True)
     
     # Find CSV files matching pattern
-    voltage_files = list(timeseries_dir.glob(f'{trial_string}*voltage_transfected.csv'))
-    ca_files = list(timeseries_dir.glob(f'{trial_string}*ca_transfected.csv'))
-    
+    # Find CSV files matching pattern - exclude files with '_post'
+    voltage_files = [f for f in timeseries_dir.glob(f'{trial_string}*voltage_transfected.csv') 
+                    if '_post_voltage' not in f.name]
+    ca_files = [f for f in timeseries_dir.glob(f'{trial_string}*ca_transfected.csv') 
+                if '_post_ca' not in f.name]
+        
     if len(voltage_files) == 0:
         print(f"Error: No voltage CSV files found matching pattern '{trial_string}*voltage_transfected.csv'")
         return None
@@ -222,9 +225,9 @@ def plot_targeted_cells_timeseries(toxin, trial_string, target_cells,
 # Example usage
 if __name__ == "__main__":
     # Set parameters
-    toxin = "4AP"  
-    trial_string = "20250128_slip2_area4"  
-    target_cells = [65,211,318 ]  
+    toxin = "Ca_free"  
+    trial_string = "20250304_slip2_area1"  
+    target_cells = [235,305,193]  
     
     # Set paths
     timeseries_dir = Path(r'R:\home\firefly_link\ca_voltage_imaging_working\results_1')

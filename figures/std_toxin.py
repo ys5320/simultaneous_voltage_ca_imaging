@@ -8,6 +8,7 @@ import warnings
 warnings.filterwarnings('ignore')
 from statannotations.Annotator import Annotator
 from vsd_cancer.functions import stats_functions as statsf
+import ptitprince as pt
 
 # Set up paths based on environment
 home = Path.home()
@@ -194,8 +195,9 @@ def load_event_data_by_toxin(toxin, data_type='voltage', segment='pre'):
     df = df[df['use'] != 'n']
     
     # Filter by toxin
-    #toxin_trials = df[df['expt'].str.contains(toxin, case=False, na=False)]['trial_string'].unique()
-    toxin_trials = df[df['expt'] == toxin]['trial_string']
+    toxin_trials = df[df['expt'].str.contains(toxin, case=False, na=False)]['trial_string'].unique()
+    #toxin_trials = df[df['expt'] == toxin]['trial_string']
+    #toxin_trials = df[df['expt'].str.lower() == toxin.lower()]['trial_string']
     
     # Debug: Print filtered trials
     print(f"\n=== Loading EVENT data: {data_type} {segment} for toxin: {toxin} ===")
@@ -323,6 +325,7 @@ def plot_std_comparison(std_data, toxin, save_path=None, stat_test='bootstrap'):
     
     plt.show()
 
+'''
 def plot_event_rate_comparison(event_data, toxin, save_path=None, stat_test='bootstrap'):
     """
     Create swarm plots comparing pre vs post event rates
@@ -421,7 +424,147 @@ def plot_event_rate_comparison(event_data, toxin, save_path=None, stat_test='boo
         print(f"Event Rate EPS saved to: {eps_path}")
     
     plt.show()
+'''
 
+def plot_event_rate_comparison(event_data, toxin, save_path=None, stat_test='bootstrap'):
+    """
+    Create half violin + swarm plots comparing pre vs post event rates
+    
+    Parameters:
+    -----------
+    event_data : pandas.DataFrame
+        DataFrame with event rates
+    toxin : str
+        Toxin name for title
+    save_path : str or Path, optional
+        Path to save the figure
+    stat_test : str
+        'mann-whitney' or 'bootstrap' for statistical testing
+    """
+    plt.rcParams.update({'font.size': 20})
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+    
+    # Simple toxin name formatting
+    formatted_toxin = toxin.replace('_', ' ').replace('uM', r'$\mu$M').replace('mM', ' mM')
+    
+    for i, data_type in enumerate(['voltage', 'calcium']):
+        ax = axes[i]
+        
+        # Filter data for this data type
+        type_data = event_data[event_data['data_type'] == data_type].copy()
+        
+        if len(type_data) > 0:
+            # Create half violin plot (split=True creates half violins)
+            # Use inner=None to remove internal markings
+            violin_parts = sns.violinplot(
+                data=type_data, 
+                x='segment', 
+                y='event_rate_per_100s', 
+                ax=ax,
+                order=['pre', 'post'],
+                inner=None,
+                cut=0,
+                linewidth=1.5,
+                saturation=0.5,
+                alpha=0.4
+            )
+            
+            # Manually adjust violin positions to be half-width and offset
+            for collection in ax.collections:
+                # Get the paths of the violin plot
+                if hasattr(collection, 'get_paths'):
+                    paths = collection.get_paths()
+                    for path in paths:
+                        vertices = path.vertices
+                        # Get the center x position
+                        x_center = vertices[:, 0].mean()
+                        # Only keep the right half of the violin
+                        mask = vertices[:, 0] >= x_center
+                        vertices[~mask, 0] = x_center
+            
+            # Overlay swarm plot with smaller dots
+            sns.swarmplot(
+                data=type_data, 
+                x='segment', 
+                y='event_rate_per_100s', 
+                ax=ax,
+                size=10,
+                order=['pre', 'post'],
+                #color='black',
+                alpha=0.7,
+                edgecolor='white',
+                linewidth=0.5
+            )
+            
+            # Remove top and right spines
+            ax.spines['right'].set_visible(False)
+            ax.spines['top'].set_visible(False)
+            
+            # Set spine width to 2pt
+            ax.spines['left'].set_linewidth(2)
+            ax.spines['bottom'].set_linewidth(2)
+            
+            # Set title based on data type
+            if data_type == 'voltage':
+                ax.set_title('Voltage Hyperpolarization Event Rate')
+            else:
+                ax.set_title('Calcium Event Rate')
+            
+            ax.set_ylabel('Events per 100s')
+            ax.set_xlabel('')
+            
+            # Set x-tick labels with formatted toxin name
+            parts = formatted_toxin.split()
+            if len(parts) >= 2:
+                ax.set_xticklabels(['Pre', f'With {parts[-1]} {parts[-2]}'])
+            else:
+                ax.set_xticklabels(['Pre', f'With {formatted_toxin}'])
+                
+            # Manual formatting for specific toxins
+            if toxin == '4AP':
+                ax.set_xticklabels(['Pre', f'With 5 mM 4-AP'])
+            if toxin == 'Ca_free':
+                ax.set_xticklabels(['Pre', r'With Ca$^{2+}$ Free External'])
+            if toxin == 'ATP_1mM':
+                ax.set_xticklabels(['Pre', f'With 1 mM ATP'])
+            
+            # Statistical comparison
+            pre_data = type_data[type_data['segment'] == 'pre']['event_rate_per_100s'].values
+            post_data = type_data[type_data['segment'] == 'post']['event_rate_per_100s'].values
+            
+            if len(pre_data) > 0 and len(post_data) > 0:
+                pairs = [('pre', 'post')]
+                
+                if stat_test == 'bootstrap':
+                    p_value = statsf.bootstrap_test(pre_data, post_data)[0]
+                    pvalues = [p_value]
+                    annotator = Annotator(ax, pairs, data=type_data, x='segment', y='event_rate_per_100s')
+                    annotator.configure(text_format='simple')
+                    annotator.set_pvalues(pvalues).annotate()
+                    
+                elif stat_test == 'mann-whitney':
+                    annotator = Annotator(ax, pairs, data=type_data, x='segment', y='event_rate_per_100s')
+                    annotator.configure(test='Mann-Whitney', text_format='simple', show_test_name=False)
+                    annotator.apply_and_annotate()
+        else:
+            ax.text(0.5, 0.5, f'No data for {data_type}', ha='center', va='center', transform=ax.transAxes)
+            ax.spines['right'].set_visible(False)
+            ax.spines['top'].set_visible(False)
+            ax.spines['left'].set_linewidth(2)
+            ax.spines['bottom'].set_linewidth(2)
+    
+    plt.tight_layout()
+    
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight', transparent=True)
+        eps_path = str(save_path).replace('.png', '.eps')
+        plt.savefig(eps_path, dpi=300, bbox_inches='tight', transparent=True)
+        print(f"Event Rate Figure saved to: {save_path}")
+        print(f"Event Rate EPS saved to: {eps_path}")
+    
+    plt.show()
+
+'''
 def analyze_toxin(toxin, save_dir=None):
     """
     Complete analysis for a specific toxin (both std and event rate)
@@ -467,13 +610,68 @@ def analyze_toxin(toxin, save_dir=None):
         print(f"No event rate data found for {toxin}")
     
     return std_data, event_data
+'''
+def analyze_toxin(toxin, save_dir=None, plot_std=True, plot_event_rate=True):
+    """
+    Complete analysis for a specific toxin
+    
+    Parameters:
+    -----------
+    toxin : str
+        Toxin name to analyze
+    save_dir : str or Path, optional
+        Directory to save figures
+    plot_std : bool
+        Whether to calculate and plot standard deviation
+    plot_event_rate : bool
+        Whether to calculate and plot event rates
+    """
+    print(f"Analyzing toxin: {toxin}")
+    print("="*50)
+
+    std_data = None
+    event_data = None
+    
+    # Calculate standard deviation data only if requested
+    if plot_std:
+        print("Loading standard deviation data...")
+        std_data = calculate_std_for_toxin(toxin)
+
+    # Calculate event rate data only if requested
+    if plot_event_rate:
+        print("Loading event rate data...")
+        event_data = calculate_event_rates_for_toxin(toxin)
+    
+    # Create plots
+    if save_dir:
+        save_dir = Path(save_dir)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        std_save_path = save_dir / f'{toxin}_std_comparison.png'
+        event_save_path = save_dir / f'{toxin}_event_rate_comparison.png'
+    else:
+        std_save_path = None
+        event_save_path = None
+    
+    # Plot standard deviation comparison
+    if plot_std and std_data is not None and len(std_data) > 0:
+        plot_std_comparison(std_data, toxin, std_save_path)
+    elif plot_std:
+        print(f"No standard deviation data found for {toxin}")
+    
+    # Plot event rate comparison
+    if plot_event_rate and event_data is not None and len(event_data) > 0:
+        plot_event_rate_comparison(event_data, toxin, event_save_path)
+    elif plot_event_rate:
+        print(f"No event rate data found for {toxin}")
+    
+    return std_data, event_data
 
 # Example usage
 if __name__ == "__main__":
     # Define toxins to analyze
     toxins = ['Ani9_10uM', 'L-15_control', 'ATP_1mM', 'TRAM-34_1uM', 'dantrolene_10uM', 'DMSO_0.1%_control']
     toxins = ['4AP','dantrolene_10uM','Thapsigargin_1uM','Ca_free']
-    toxins = ['Ca_free']
+    toxins = ['TRAM-34_1uM']
     
     # Create save directory
     save_dir = data_dir / 'toxin_analysis_plots'
@@ -482,8 +680,7 @@ if __name__ == "__main__":
     all_results = {}
     for toxin in toxins:
         try:
-
-            std_data, event_data = analyze_toxin(toxin, save_dir)
+            std_data, event_data = analyze_toxin(toxin, save_dir, plot_std=False)
             all_results[toxin] = {'std_data': std_data, 'event_data': event_data}
         except Exception as e:
             print(f"Error analyzing {toxin}: {e}")

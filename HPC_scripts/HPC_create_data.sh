@@ -1,7 +1,7 @@
 #PBS -lselect=1:ncpus=32:mem=64gb
 #PBS -lwalltime=08:00:00
-#PBS -N results_2
-#PBS -J 1-24
+#PBS -N redo_calcium
+#PBS -J 1-69
 
 module load anaconda3/personal
 source activate cancer_HPC_tst

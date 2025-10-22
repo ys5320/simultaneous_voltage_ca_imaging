@@ -20,7 +20,7 @@ class SimpleEventQC:
         self.swap_coordinates = swap_coordinates
         
         # Pipeline directories
-        self.base_results_dir = Path(top_dir, 'analysis', 'results_pipeline')
+        self.base_results_dir = Path(top_dir, 'analysis', 'results_profiles')
         self.video_results_dir = Path(top_dir, 'analysis', 'results_profiles')
         
         self.qc_decisions = {}
@@ -1467,6 +1467,7 @@ class SimpleEventQC:
 
 def main():
     """Main function"""
+    # load data from the path of results_profiles
     print("ENHANCED EVENT QC TOOL - WITH PRE-GENERATED TIMESERIES PLOTS")
     print("Command-line interface with:")
     print("  • Trial overview using pre-generated plots from event_detection_plots")
@@ -1492,7 +1493,7 @@ def main():
     df_filtered = df_raw[df_raw['multi_tif'] > 1]
     df_filtered = df_filtered[df_filtered['use'] != 'n']
     #df_filtered = df_filtered[df_filtered['expt'] == 'TRAM-34_1uM']
-    df_filtered = df_filtered[df_filtered['expt'].str.contains('Ca_free', na=False)]
+    df_filtered = df_filtered[df_filtered['expt'].str.contains('siRNA_negative_control', na=False)]
     df_filtered = df_filtered.reset_index(drop=True)
     
     if len(df_filtered) == 0:

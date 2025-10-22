@@ -70,15 +70,16 @@ def run_pipeline(df_file, top_dir, data_dir, HPC_num=None):
         'max_simultaneous_cells': 999,
         'overlap_threshold': 0.9,
         'use_fixed_std': True,
-        'fixed_std_value': 0.05,
+        'fixed_std_value': 0.06,
         'filter_bleaching_artifacts': True,
         'bleaching_min_cells': 5,
         'bleaching_overlap_threshold': 0.7,
         'bleaching_start_time_threshold': 10.0,
+        'min_event_duration_sec': 6.5
     }
     
     # Set up directories - follow same pattern as make_videos
-    base_results_dir = Path(top_dir, 'analysis', 'results_pipeline')
+    base_results_dir = Path(top_dir, 'analysis', 'results_profiles')
     save_dir_plots = Path(base_results_dir, 'timeseries_plots')
     save_dir_event_plots = Path(base_results_dir, 'event_detection_plots')
     
@@ -100,15 +101,28 @@ def run_pipeline(df_file, top_dir, data_dir, HPC_num=None):
         trial_string = trial_row.trial_string
         original_folder = Path(trial_row.folder)
         
-        print(f"\nProcessing pipeline for trial: {trial_string}")
+        # CREATE UNIQUE IDENTIFIER (this is the key fix!)
+        unique_trial_id = create_unique_trial_identifier(trial_row)
         
-        # Find corresponding timeseries files for this trial
-        # REPLACE WITH the simple original version:
-        voltage_files = list(data_dir.glob(f"*{trial_string}*_voltage_transfected*.csv"))
-        calcium_files = list(data_dir.glob(f"*{trial_string}*_ca_transfected*.csv"))
+        print(f"\nProcessing pipeline for trial: {unique_trial_id}")
+        
+        # Find corresponding timeseries files using ORIGINAL trial_string
+        # Need to match the exact experiment type to avoid confusion
+        if '_post' in trial_row.expt.lower():
+            # For post-only trials, look for files with '_post' in the name
+            voltage_files = list(data_dir.glob(f"*{trial_string}*_post*_voltage_transfected*.csv"))
+            calcium_files = list(data_dir.glob(f"*{trial_string}*_post*_ca_transfected*.csv"))
+        else:
+            # For full trials, exclude files with '_post' in the name
+            all_voltage_files = list(data_dir.glob(f"*{trial_string}*_voltage_transfected*.csv"))
+            all_calcium_files = list(data_dir.glob(f"*{trial_string}*_ca_transfected*.csv"))
+            
+            # Filter out files that contain '_post'
+            voltage_files = [f for f in all_voltage_files if '_post' not in f.stem.lower()]
+            calcium_files = [f for f in all_calcium_files if '_post' not in f.stem.lower()]
 
         if not voltage_files or not calcium_files:
-            print(f"  ⚠ Missing timeseries files for {trial_string} ({'post' if '_post' in trial_row.expt.lower() else 'full'}), skipping")
+            print(f"  ⚠ Missing timeseries files for {unique_trial_id}, skipping")
             continue
         
         voltage_file = voltage_files[0]
@@ -117,15 +131,15 @@ def run_pipeline(df_file, top_dir, data_dir, HPC_num=None):
         # Determine toxin
         toxin = determine_toxin_from_trial(trial_string, voltage_file.name)
         
-        # Create trial-specific directory using unique name
-        trial_data_dir = Path(base_results_dir, trial_string)
+        # Create trial-specific directory using UNIQUE ID (this prevents overwriting!)
+        trial_data_dir = Path(base_results_dir, unique_trial_id)
         trial_data_dir.mkdir(parents=True, exist_ok=True)
         
         try:
-            # Run the complete processing pipeline
+            # Run the complete processing pipeline with UNIQUE ID
             success = process_single_trial_complete(
-                voltage_file, calcium_file, toxin, trial_string,  # Keep original trial_string for file matching
-                original_folder, save_dir_plots, trial_data_dir,  # Use unique directory
+                voltage_file, calcium_file, toxin, unique_trial_id,  # Changed from trial_string
+                original_folder, save_dir_plots, trial_data_dir,
                 trial_data_dir, save_dir_event_plots,
                 trial_row=trial_row,
                 **PROCESSING_OPTIONS

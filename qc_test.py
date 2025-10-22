@@ -20,7 +20,7 @@ class SimpleEventQC:
         self.swap_coordinates = swap_coordinates
         
         # Pipeline directories
-        self.base_results_dir = Path(top_dir, 'analysis', 'results_pipeline')
+        self.base_results_dir = Path(top_dir, 'analysis', 'results_profiles')
         self.video_results_dir = Path(top_dir, 'analysis', 'results_profiles')
         
         self.qc_decisions = {}
@@ -938,6 +938,7 @@ class SimpleEventQC:
         
         # Check if all required files exist
         return all(file.exists() for file in required_files)
+    
     def apply_single_trial_decisions(self, trial_string):
         """Apply QC decisions for a single completed trial - save 4 separate CSV files"""
         if not self.qc_decisions:
