@@ -1,6 +1,5 @@
 """
-Simple Command-Line Event QC Tool with Trial Overview
-COMPLETE VERSION: Uses pre-generated plots from event_detection_plots folder
+For debugging only, not to use for offical QC.
 """
 
 import cv2
@@ -26,61 +25,107 @@ class SimpleEventQC:
         self.qc_decisions = {}
         
     def find_trials_from_metadata(self):
-        """Find complete trials"""
+        """Find complete trials with improved file detection - handles _post folders"""
         print("Finding trials from metadata...")
         complete_trials = {}
+        incomplete_trials = []
         
         for idx, trial_row in self.df_metadata.iterrows():
             trial_string = trial_row.trial_string
-            trial_pipeline_dir = self.base_results_dir / trial_string
-            trial_video_dir = self.video_results_dir / trial_string
+            expt = trial_row.expt
+            
+            # Determine actual folder name based on expt
+            if '_post' in expt:
+                actual_folder_name = f"{trial_string}_post"
+            else:
+                actual_folder_name = trial_string
+            
+            trial_pipeline_dir = self.base_results_dir / actual_folder_name
+            trial_video_dir = self.base_results_dir / actual_folder_name
             
             if not trial_pipeline_dir.exists() or not trial_video_dir.exists():
                 continue
+
+            # Separate events files from timeseries files
+            all_voltage_files = list(trial_pipeline_dir.glob("*voltage*.csv"))
+            all_calcium_files = list(trial_pipeline_dir.glob("*calcium*.csv"))
             
-            voltage_events = list(trial_pipeline_dir.glob("events_voltage_*_filtered.csv"))
-            calcium_events = list(trial_pipeline_dir.glob("events_calcium_*_filtered.csv"))
-            voltage_timeseries = list(trial_pipeline_dir.glob("*_voltage_*.csv"))
-            calcium_timeseries = list(trial_pipeline_dir.glob("*_calcium_*.csv"))
+            voltage_events = [f for f in all_voltage_files if 'events_' in f.name]
+            calcium_events = [f for f in all_calcium_files if 'events_' in f.name]
+            voltage_timeseries = [f for f in all_voltage_files if 'events_' not in f.name]
+            calcium_timeseries = [f for f in all_calcium_files if 'events_' not in f.name]
             
             segment_videos = {
                 'voltage': {
-                    'pre': trial_pipeline_dir / f"pre_voltage_{trial_string}.avi",
-                    'post': trial_pipeline_dir / f"post_voltage_{trial_string}.avi",
-                    'full': trial_video_dir / "enhanced_voltage_video.avi"
+                    'pre': trial_pipeline_dir / f"pre_voltage_{actual_folder_name}.avi",
+                    'post': trial_pipeline_dir / f"post_voltage_{actual_folder_name}.avi",
+                    'full': trial_pipeline_dir / "enhanced_voltage_video.avi"
                 },
                 'calcium': {
-                    'pre': trial_pipeline_dir / f"pre_calcium_{trial_string}.avi", 
-                    'post': trial_pipeline_dir / f"post_calcium_{trial_string}.avi",
-                    'full': trial_video_dir / "enhanced_calcium_video.avi"
+                    'pre': trial_pipeline_dir / f"pre_calcium_{actual_folder_name}.avi", 
+                    'post': trial_pipeline_dir / f"post_calcium_{actual_folder_name}.avi",
+                    'full': trial_pipeline_dir / "enhanced_calcium_video.avi"
                 }
             }
-            '''
-            print(f"  Expected pre voltage: {segment_videos['voltage']['pre']} - exists: {segment_videos['voltage']['pre'].exists()}")
-            print(f"  Expected post voltage: {segment_videos['voltage']['post']} - exists: {segment_videos['voltage']['post'].exists()}")
-            print(f"  Expected full voltage: {segment_videos['voltage']['full']} - exists: {segment_videos['voltage']['full'].exists()}")
-            print(f"  Expected pre calcium: {segment_videos['calcium']['pre']} - exists: {segment_videos['calcium']['pre'].exists()}")
-            print(f"  Expected post calcium: {segment_videos['calcium']['post']} - exists: {segment_videos['calcium']['post'].exists()}")
-            print(f"  Expected full calcium: {segment_videos['calcium']['full']} - exists: {segment_videos['calcium']['full'].exists()}")
-            '''
-            has_voltage_video = (segment_videos['voltage']['full'].exists() or 
-                               (segment_videos['voltage']['pre'].exists() and segment_videos['voltage']['post'].exists()))
-            has_calcium_video = (segment_videos['calcium']['full'].exists() or 
-                               (segment_videos['calcium']['pre'].exists() and segment_videos['calcium']['post'].exists()))
+            
+            # For _post trials, only require post videos. For normal trials, require both pre and post
+            if '_post' in expt:
+                # Post-only trial: just need post videos OR full video
+                has_voltage_video = (
+                    segment_videos['voltage']['full'].exists() or 
+                    segment_videos['voltage']['post'].exists()
+                )
+                has_calcium_video = (
+                    segment_videos['calcium']['full'].exists() or 
+                    segment_videos['calcium']['post'].exists()
+                )
+            else:
+                # Normal trial: need full video OR both pre and post
+                has_voltage_video = (
+                    segment_videos['voltage']['full'].exists() or 
+                    (segment_videos['voltage']['pre'].exists() and segment_videos['voltage']['post'].exists())
+                )
+                has_calcium_video = (
+                    segment_videos['calcium']['full'].exists() or 
+                    (segment_videos['calcium']['pre'].exists() and segment_videos['calcium']['post'].exists())
+                )
             
             if (voltage_events and calcium_events and 
                 voltage_timeseries and calcium_timeseries and 
                 has_voltage_video and has_calcium_video):
                 
-                complete_trials[trial_string] = {
+                # Create unique key to distinguish normal vs _post versions
+                unique_key = actual_folder_name  # Use actual folder name as key
+                
+                complete_trials[unique_key] = {
                     'voltage_events': voltage_events[0],
                     'calcium_events': calcium_events[0],
                     'voltage_timeseries': voltage_timeseries,
                     'calcium_timeseries': calcium_timeseries,
                     'videos': segment_videos,
-                    'trial_row': trial_row
+                    'trial_row': trial_row,
+                    'trial_string': trial_string,  # Store original trial_string
+                    'actual_folder': actual_folder_name  # Store actual folder name
                 }
-                print(f"  ✓ {trial_string}")
+                print(f"  ✓ {trial_string} ({expt}) -> {actual_folder_name}")
+            
+            else:
+                # Add this debugging
+                missing_items = []
+                if not voltage_events: missing_items.append("voltage_events")
+                if not calcium_events: missing_items.append("calcium_events") 
+                if not voltage_timeseries: missing_items.append("voltage_timeseries")
+                if not calcium_timeseries: missing_items.append("calcium_timeseries")
+                if not has_voltage_video: missing_items.append("voltage_video")
+                if not has_calcium_video: missing_items.append("calcium_video")
+                
+                incomplete_trials.append((f"{trial_string} ({expt})", f"Missing: {', '.join(missing_items)}"))
+        
+        # Add this at the end
+        if incomplete_trials:
+            print(f"\nIncomplete trials ({len(incomplete_trials)}):")
+            for trial, reason in incomplete_trials:
+                print(f"  ✗ {trial}: {reason}")
         
         return complete_trials
     
@@ -208,11 +253,37 @@ class SimpleEventQC:
         return None
     
     def get_best_timeseries_for_segment(self, timeseries_files, segment_name):
-        """Get best timeseries file"""
-        for ts_file in timeseries_files:
-            if segment_name in ts_file.name.lower():
+        """Get best timeseries file - improved to avoid events files"""
+        
+        print(f"DEBUG: Looking for {segment_name} timeseries in: {[f.name for f in timeseries_files]}")
+        
+        # Filter out events files (they contain 'events_' in the name)
+        actual_timeseries_files = [f for f in timeseries_files if 'events_' not in f.name.lower()]
+        
+        print(f"DEBUG: After filtering out events files: {[f.name for f in actual_timeseries_files]}")
+        
+        # First, try to find exact segment match
+        for ts_file in actual_timeseries_files:
+            filename = ts_file.name.lower()
+            if f'{segment_name}_' in filename:
+                print(f"DEBUG: Found exact match: {ts_file.name}")
                 return ts_file
-        return timeseries_files[0] if timeseries_files else None
+        
+        # For post-only trials looking for 'post', accept files with 'post_' in name
+        if segment_name == 'post':
+            for ts_file in actual_timeseries_files:
+                if 'post_' in ts_file.name.lower():
+                    print(f"DEBUG: Found post file: {ts_file.name}")
+                    return ts_file
+        
+        # Last resort: use first non-events file
+        if actual_timeseries_files:
+            fallback_file = actual_timeseries_files[0]
+            print(f"DEBUG: Using fallback file: {fallback_file.name}")
+            return fallback_file
+        
+        print(f"DEBUG: No timeseries files found for {segment_name}")
+        return None
     
     def load_existing_timeseries_plot(self, segment_data):
         """Load pre-generated timeseries plot from event_detection_plots folder"""
@@ -851,16 +922,17 @@ class SimpleEventQC:
                 
                 if decision != 'skip':
                     event_decisions[event_idx] = decision
-                
-                # Automatically proceed to next event after accept/reject
+            
                 current_event += 1
-                
-                # Only ask for navigation if user wants to go back or quit
+                # Enhanced navigation with cell-level bulk options
                 if current_event < len(events_df):
+                    current_cell = event['cell_index']
                     print(f"\nAutomatically proceeding to next event ({current_event + 1}/{len(events_df)})")
                     print("Press Enter to continue, or type:")
                     print("  p - Go back to previous event")
                     print("  q - Quit this segment")
+                    print(f"  y - Accept ALL remaining events for cell {current_cell}")
+                    print(f"  n - Reject ALL remaining events for cell {current_cell}")
                     
                     next_choice = input("Choice (or Enter): ").strip().lower()
                     
@@ -868,6 +940,34 @@ class SimpleEventQC:
                         current_event = max(0, current_event - 1)
                     elif next_choice == 'q':
                         break
+                    elif next_choice == 'y':
+                        # Accept all remaining events for this cell
+                        count = 0
+                        last_cell_event = current_event - 1  # Track last event of this cell
+                        for idx in range(current_event, len(events_df)):
+                            future_event = events_df.iloc[idx]
+                            if future_event['cell_index'] == current_cell:
+                                future_event_idx = events_df.index[idx]
+                                event_decisions[future_event_idx] = 'accept'
+                                count += 1
+                                last_cell_event = idx
+                        print(f"✓ Accepted {count} remaining events for cell {current_cell}")
+                        # Skip to next cell
+                        current_event = last_cell_event + 1
+                    elif next_choice == 'n':
+                        # Reject all remaining events for this cell
+                        count = 0
+                        last_cell_event = current_event - 1  # Track last event of this cell
+                        for idx in range(current_event, len(events_df)):
+                            future_event = events_df.iloc[idx]
+                            if future_event['cell_index'] == current_cell:
+                                future_event_idx = events_df.index[idx]
+                                event_decisions[future_event_idx] = 'reject'
+                                count += 1
+                                last_cell_event = idx
+                        print(f"✗ Rejected {count} remaining events for cell {current_cell}")
+                        # Skip to next cell
+                        current_event = last_cell_event + 1
                     # Otherwise continue automatically (Enter or any other input)
         
         # Process decisions
@@ -913,20 +1013,12 @@ class SimpleEventQC:
         """Check if trial has all required final QC files (handles post-only trials)"""
         trial_dir = self.base_results_dir / trial_string
         
-        # Check what segments actually exist for this trial
-        voltage_events = list(trial_dir.glob("events_voltage_*_filtered.csv"))
-        calcium_events = list(trial_dir.glob("events_calcium_*_filtered.csv"))
-        
-        if not voltage_events or not calcium_events:
+        # Detect available segments for this trial (reuse the logic)
+        trial_files = self.find_trials_from_metadata().get(trial_string)
+        if not trial_files:
             return False
         
-        # Read one file to see what segments exist
-        voltage_df = pd.read_csv(voltage_events[0])
-        if 'segment' in voltage_df.columns:
-            available_segments = voltage_df['segment'].unique()
-        else:
-            # If no segment column, assume post-only
-            available_segments = ['post']
+        available_segments = self.detect_available_segments(trial_string, trial_files)
         
         # Check for required files based on available segments
         required_files = []
@@ -935,7 +1027,12 @@ class SimpleEventQC:
                 required_files.append(
                     trial_dir / f"events_{data_type}_{segment}_{trial_string}_simple_QC_final.csv"
                 )
-        
+        '''
+        print(f"DEBUG: Checking completion for {trial_string}")
+        print(f"  Available segments: {available_segments}")
+        print(f"  Required files: {[f.name for f in required_files]}")
+        print(f"  Files exist: {[f.exists() for f in required_files]}")
+        '''
         # Check if all required files exist
         return all(file.exists() for file in required_files)
     
@@ -988,30 +1085,7 @@ class SimpleEventQC:
                     segment_file = trial_dir / f"events_{data_type}_{segment}_{trial_string}_simple_QC_final.csv"
                     final_segment_events.to_csv(segment_file, index=False)
                     print(f"✓ Created: {segment_file.name}")
-    
-    def create_final_toxin_summary(self):
-        """Create final toxin summary from all completed trials"""
-        # Get all completed trials
-        completed_trials = [t for t in self.find_trials_from_metadata().keys() 
-                           if self.is_trial_complete(t)]
-        
-        if not completed_trials:
-            print("No completed trials found for summary")
-            return
-        
-        # Create combined summary using existing method logic
-        individual_trial_results = {}
-        
-        for trial_string in completed_trials:
-            individual_trial_results[trial_string] = {}
-            trial_dir = self.base_results_dir / trial_string
-            
-            for data_type in ['voltage', 'calcium']:
-                final_file = trial_dir / f"events_{data_type}_{trial_string}_simple_QC_final.csv"
-                if final_file.exists():
-                    individual_trial_results[trial_string][data_type] = pd.read_csv(final_file)
-        
-        self.create_toxin_summary_files(individual_trial_results)
+
     
     def run_simple_qc(self):
         """Main QC workflow with trial overview"""
@@ -1021,6 +1095,7 @@ class SimpleEventQC:
         print("STEP 2: Detailed event QC (shows FULL CELL timeseries with video sync)")
         print("="*70)
         
+        # Call find_trials_from_metadata() only ONCE
         trials = self.find_trials_from_metadata()
         
         if not trials:
@@ -1029,40 +1104,76 @@ class SimpleEventQC:
         
         print(f"Found {len(trials)} complete trials")
         
-        # Check for already completed trials
+        # Check completion for ALL found trials (using actual folder names as keys)
         completed_trials = []
         remaining_trials = []
         
-        for trial_string in trials.keys():
-            if self.is_trial_complete(trial_string):
-                completed_trials.append(trial_string)
+        for trial_key in trials.keys():  # trial_key is actual_folder_name
+            if self.is_trial_complete(trial_key):
+                completed_trials.append(trial_key)
             else:
-                remaining_trials.append(trial_string)
+                remaining_trials.append(trial_key)
+        
+        # Find incomplete trials (in metadata but not found by find_trials_from_metadata)
+        all_found_trial_strings = set()
+        for trial_data in trials.values():
+            all_found_trial_strings.add(trial_data['trial_string'])
+        
+        all_metadata_trial_strings = set(self.df_metadata['trial_string'].tolist())
+        incomplete_trial_strings = all_metadata_trial_strings - all_found_trial_strings
         
         print(f"Already completed: {len(completed_trials)} trials")
         print(f"Remaining to QC: {len(remaining_trials)} trials")
+        print(f"Incomplete (missing files): {len(incomplete_trial_strings)} trials")
         
         if completed_trials:
             print("Completed trials:")
-            for trial in completed_trials:
-                print(f"  ✓ {trial}")
+            for trial_key in completed_trials:
+                # Show the original trial_string for clarity
+                trial_string = trials[trial_key]['trial_string']
+                expt = trials[trial_key]['trial_row'].expt
+                print(f"  ✓ {trial_string} ({expt})")
+        
+        if incomplete_trial_strings:
+            print("Incomplete trials (missing required files):")
+            for trial_string in incomplete_trial_strings:
+                print(f"  ✗ {trial_string}")
+                # Add debugging to show what's missing
+                self.debug_missing_files(trial_string)
         
         if not remaining_trials:
-            print("All trials already completed!")
+            if incomplete_trial_strings:
+                print(f"\nAll processable trials completed! {len(incomplete_trial_strings)} trials have missing files.")
+            else:
+                print("All trials already completed!")
+            
+            # Create final toxin summary
+            apply_now = input("\nCreate final toxin summary files? (y/n): ").strip().lower()
+            if apply_now in ['y', 'yes']:
+                self.create_toxin_summary_files()
             return
         
         segment_count = 0
         total_segments = len(remaining_trials) * 2 * 2
         
-        for trial_string in remaining_trials:
-            trial_files = trials[trial_string]
+        for trial_key in remaining_trials:  # trial_key is actual_folder_name
+            trial_files = trials[trial_key]
+            trial_string = trial_files['trial_string']  # Get original trial_string
+            expt = trial_files['trial_row'].expt
+            
             print(f"\n{'='*80}")
-            print(f"PROCESSING TRIAL: {trial_string}")
+            print(f"PROCESSING TRIAL: {trial_string} ({expt}) -> {trial_key}")
             print(f"{'='*80}")
             
             trial_completed = True  # Track if all segments for this trial are completed
             
-            for segment_name in ['pre', 'post']:
+            # Detect available segments for this trial
+            available_segments = self.detect_available_segments(trial_key, trial_files)
+            print(f"Available segments for {trial_key}: {available_segments}")
+
+            total_segments_for_trial = len(available_segments) * 2  # voltage + calcium
+
+            for segment_name in available_segments:
                 for data_type in ['voltage', 'calcium']:
                     segment_count += 1
                     
@@ -1071,10 +1182,10 @@ class SimpleEventQC:
                     print(f"{'='*60}")
                     
                     try:
-                        segment_data = self.load_segment_data(trial_string, trial_files, segment_name, data_type)
+                        segment_data = self.load_segment_data(trial_key, trial_files, segment_name, data_type)
                         
                         if segment_data is None:
-                            print(f"Failed to load {trial_string} {segment_name} {data_type}")
+                            print(f"Failed to load {trial_key} {segment_name} {data_type}")
                             trial_completed = False
                             continue
                         
@@ -1087,10 +1198,10 @@ class SimpleEventQC:
                         # QC this segment (with trial overview first)
                         qc_result = self.qc_segment(segment_data)
                         
-                        # Save decision
-                        qc_key = f"{trial_string}_{segment_name}_{data_type}"
+                        # Save decision using trial_key (actual folder name)
+                        qc_key = f"{trial_key}_{segment_name}_{data_type}"
                         self.qc_decisions[qc_key] = {
-                            'trial_string': trial_string,
+                            'trial_string': trial_key,  # Store actual folder name
                             'segment': segment_name,
                             'data_type': data_type,
                             'decision': qc_result['decision'],
@@ -1107,18 +1218,18 @@ class SimpleEventQC:
             # After completing all segments for this trial, create checkpoint
             if trial_completed:
                 print(f"\n{'='*60}")
-                print(f"COMPLETED TRIAL: {trial_string}")
+                print(f"COMPLETED TRIAL: {trial_key}")
                 print(f"{'='*60}")
                 
                 # Apply decisions immediately for this trial
-                self.apply_single_trial_decisions(trial_string)
+                self.apply_single_trial_decisions(trial_key)
                 
                 # Save overall QC results
                 self.save_qc_results()
                 
-                print(f"✓ Checkpoint saved for {trial_string}")
+                print(f"✓ Checkpoint saved for {trial_key}")
             else:
-                print(f"✗ Trial {trial_string} incomplete - will retry next time")
+                print(f"✗ Trial {trial_key} incomplete - will retry next time")
         
         print("\n" + "="*80)
         print("QC SESSION COMPLETE")
@@ -1133,20 +1244,84 @@ class SimpleEventQC:
         
         if final_remaining:
             print("Still need to QC:")
-            for trial in final_remaining:
-                print(f"  - {trial}")
+            for trial_key in final_remaining:
+                trial_string = trials[trial_key]['trial_string']
+                expt = trials[trial_key]['trial_row'].expt
+                print(f"  - {trial_string} ({expt})")
         else:
             print("🎉 ALL TRIALS COMPLETED!")
             
             # Create final toxin summary
             apply_now = input("\nCreate final toxin summary files? (y/n): ").strip().lower()
             if apply_now in ['y', 'yes']:
-                self.create_final_toxin_summary()
+                self.create_toxin_summary_files()
+
+    def debug_missing_files(self, trial_string):
+        """Debug what files are missing for an incomplete trial"""
+        trial_pipeline_dir = self.base_results_dir / trial_string
+        trial_video_dir = self.base_results_dir / trial_string
+        
+        print(f"    Debugging {trial_string}:")
+        print(f"    Pipeline dir exists: {trial_pipeline_dir.exists()}")
+        print(f"    Video dir exists: {trial_video_dir.exists()}")
+        
+        if trial_pipeline_dir.exists():
+            voltage_files = list(trial_pipeline_dir.glob("*voltage*.csv"))
+            calcium_files = list(trial_pipeline_dir.glob("*calcium*.csv"))
+            print(f"    Voltage files: {[f.name for f in voltage_files]}")
+            print(f"    Calcium files: {[f.name for f in calcium_files]}")
+            
+            # Check for videos
+            voltage_videos = {
+                'pre': trial_pipeline_dir / f"pre_voltage_{trial_string}.avi",
+                'post': trial_pipeline_dir / f"post_voltage_{trial_string}.avi",
+                'full': trial_pipeline_dir / "enhanced_voltage_video.avi"
+            }
+            calcium_videos = {
+                'pre': trial_pipeline_dir / f"pre_calcium_{trial_string}.avi",
+                'post': trial_pipeline_dir / f"post_calcium_{trial_string}.avi", 
+                'full': trial_pipeline_dir / "enhanced_calcium_video.avi"
+            }
+            
+            print(f"    Voltage videos: {[(k, v.exists()) for k, v in voltage_videos.items()]}")
+            print(f"    Calcium videos: {[(k, v.exists()) for k, v in calcium_videos.items()]}")
     
+    def detect_available_segments(self, trial_string, trial_files):
+        """Detect which segments (pre/post) are available for this trial"""
+        available_segments = set()
+        
+        # Check voltage events to see what segments exist
+        if 'voltage_events' in trial_files:
+            voltage_events_df = pd.read_csv(trial_files['voltage_events'])
+            if 'segment' in voltage_events_df.columns:
+                available_segments.update(voltage_events_df['segment'].unique())
+            else:
+                # If no segment column, assume post-only
+                available_segments.add('post')
+        
+        # Also check timeseries files to confirm
+        voltage_timeseries = trial_files.get('voltage_timeseries', [])
+        for ts_file in voltage_timeseries:
+            filename = ts_file.name.lower()
+            if 'pre_' in filename:
+                available_segments.add('pre')
+            elif 'post_' in filename:
+                available_segments.add('post')
+        
+        # Return sorted list for consistency
+        segment_order = ['pre', 'post']
+        return [seg for seg in segment_order if seg in available_segments]
+        
     def save_qc_results(self):
         """Save QC decisions"""
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        results_file = self.base_results_dir / f"simple_qc_decisions_{timestamp}.json"
+        
+        # Create qc_checkpoint directory
+        checkpoint_dir = self.base_results_dir / "qc_checkpoint"
+        checkpoint_dir.mkdir(exist_ok=True)
+        
+        # Save to checkpoint directory
+        results_file = checkpoint_dir / f"simple_qc_decisions_{timestamp}.json"
         
         with open(results_file, 'w') as f:
             json.dump(self.qc_decisions, f, indent=2, default=str)
@@ -1243,72 +1418,81 @@ class SimpleEventQC:
         
         print("QC complete!")
 
-    def create_toxin_summary_files(self, individual_trial_results):
-        """Create combined summary files for all trials of this toxin"""
-        print("\nCreating toxin-level summary files...")
+    def create_toxin_summary_files(self):
+        """Create separate toxin summary files preserving segment structure"""
+        print("\nCreating toxin-specific summary files...")
         
-        # Determine toxin name from metadata
-        if len(self.df_metadata) > 0:
-            toxin = self.df_metadata['expt'].iloc[0]
-        else:
-            toxin = "unknown_toxin"
+        # Create events_df directory
+        events_df_dir = self.base_results_dir / 'events_df'
+        events_df_dir.mkdir(exist_ok=True)
         
-        print(f"Toxin: {toxin}")
+        # Get all completed trials
+        completed_trials = [t for t in self.find_trials_from_metadata().keys() 
+                        if self.is_trial_complete(t)]
         
-        # Combine all trials for each data type
-        for data_type in ['voltage', 'calcium']:
-            all_events_list = []
+        if not completed_trials:
+            print("No completed trials found for summary")
+            return
+        
+        # Find all unique toxins
+        toxins_in_data = set()
+        for trial_string in completed_trials:
+            trial_row = self.df_metadata[self.df_metadata['trial_string'] == trial_string]
+            if len(trial_row) > 0:
+                toxins_in_data.add(trial_row.iloc[0]['expt'])
+        
+        print(f"Found toxins: {list(toxins_in_data)}")
+        
+        # For each toxin, create separate files for each data_type and segment combination
+        for toxin in toxins_in_data:
+            print(f"\n--- Creating files for: {toxin} ---")
             
-            for trial_string, trial_results in individual_trial_results.items():
-                if data_type in trial_results:
-                    trial_events = trial_results[data_type].copy()
-                    
-                    # Add trial identifier to each event
-                    trial_events['trial_string'] = trial_string
-                    
-                    # Add trial metadata if available
-                    trial_row = self.df_metadata[self.df_metadata['trial_string'] == trial_string]
-                    if len(trial_row) > 0:
-                        trial_info = trial_row.iloc[0]
-                        trial_events['date'] = trial_info.get('date', '')
-                        trial_events['area'] = trial_info.get('area', '')
-                        trial_events['toxin'] = trial_info.get('expt', toxin)
-                        trial_events['concentration'] = trial_info.get('concentration', '')
-                    
-                    all_events_list.append(trial_events)
+            # Get trials for this toxin
+            toxin_trials = []
+            for trial_string in completed_trials:
+                trial_row = self.df_metadata[self.df_metadata['trial_string'] == trial_string]
+                if len(trial_row) > 0 and trial_row.iloc[0]['expt'] == toxin:
+                    toxin_trials.append(trial_string)
             
-            if all_events_list:
-                # Combine all trials
-                combined_events = pd.concat(all_events_list, ignore_index=True)
-                
-                # Save toxin summary file
-                summary_file = self.base_results_dir / f"events_{data_type}_{toxin}_QC_final.csv"
-                combined_events.to_csv(summary_file, index=False)
-                
-                print(f"✓ TOXIN SUMMARY: {summary_file.name}")
-                print(f"   Total events: {len(combined_events)}")
-                print(f"   Trials included: {len(all_events_list)}")
-                
-                # Print summary statistics
-                if len(combined_events) > 0:
-                    print(f"   Events by trial:")
-                    trial_counts = combined_events.groupby('trial_string').size()
-                    for trial, count in trial_counts.items():
-                        print(f"     {trial}: {count} events")
+            # For each data_type and segment combination
+            for data_type in ['voltage', 'calcium']:
+                for segment in ['pre', 'post']:
+                    all_events_list = []
                     
-                    if 'segment' in combined_events.columns:
-                        print(f"   Events by segment:")
-                        segment_counts = combined_events.groupby('segment').size()
-                        for segment, count in segment_counts.items():
-                            print(f"     {segment}: {count} events")
-            else:
-                print(f"✗ No {data_type} events found across trials")
+                    for trial_string in toxin_trials:
+                        trial_dir = self.base_results_dir / trial_string
+                        segment_file = trial_dir / f"events_{data_type}_{segment}_{trial_string}_simple_QC_final.csv"
+                        
+                        if segment_file.exists():
+                            events_df = pd.read_csv(segment_file)
+                            
+                            # Add trial metadata
+                            trial_row = self.df_metadata[self.df_metadata['trial_string'] == trial_string]
+                            if len(trial_row) > 0:
+                                trial_info = trial_row.iloc[0]
+                                events_df['trial_string'] = trial_string
+                                events_df['date'] = trial_info.get('date', '')
+                                events_df['area'] = trial_info.get('area', '')
+                                events_df['toxin'] = trial_info.get('expt', toxin)
+                                events_df['concentration'] = trial_info.get('concentration', '')
+                            
+                            all_events_list.append(events_df)
+                    
+                    if all_events_list:
+                        # Combine all trials for this toxin/data_type/segment
+                        combined_events = pd.concat(all_events_list, ignore_index=True)
+                        
+                        # Save toxin-specific file in events_df subdirectory
+                        summary_file = events_df_dir / f"events_{data_type}_{segment}_{toxin}_QC_final.csv"
+                        combined_events.to_csv(summary_file, index=False)
+                        
+                        print(f"✓ {summary_file.name}: {len(combined_events)} events from {len(all_events_list)} trials")
         
-        print(f"\nToxin summary files created for: {toxin}")
-
+        print(f"\nToxin-specific summary files created for: {list(toxins_in_data)}")
 
 def main():
     """Main function"""
+    # load data from the path of results_profiles
     print("ENHANCED EVENT QC TOOL - WITH PRE-GENERATED TIMESERIES PLOTS")
     print("Command-line interface with:")
     print("  • Trial overview using pre-generated plots from event_detection_plots")
@@ -1323,7 +1507,8 @@ def main():
         df_file = Path(top_dir, 'analysis', 'dataframes', f'long_acqs_{cell_line}_all_before_{date}.csv')
     else:
         top_dir = Path(r"R:\home\firefly_link\Calcium_Voltage_Imaging", f'{cell_line}')
-        df_file = Path(top_dir, 'analysis', 'dataframes', f'long_acqs_{cell_line}_all_before_{date}.csv')
+        df_file = Path(top_dir, 'analysis', 'dataframes', f'MDA_MB_468_dataframe_tc_extracted.csv')
+        #df_file = Path(top_dir,'analysis', 'dataframes',f'MDA_MB_468_segmented_results2.csv')
     
     # Load metadata
     if not df_file.exists():
@@ -1332,9 +1517,9 @@ def main():
     
     df_raw = pd.read_csv(df_file)
     df_filtered = df_raw[df_raw['multi_tif'] > 1]
-    df_filtered = df_filtered[df_filtered['use'] == 'y']
-    #df_filtered = df_filtered[df_filtered['expt'] == 'TRAM-34_1uM']
-    df_filtered = df_filtered[df_filtered['expt'].str.contains('TRAM-34_1uM', na=False)]
+    df_filtered = df_filtered[df_filtered['use'] != 'n']
+    #df_filtered = df_filtered[df_filtered['expt'] == 'Ca_free_post']
+    df_filtered = df_filtered[df_filtered['expt'].str.contains('Ca_free', na=False)]
     df_filtered = df_filtered.reset_index(drop=True)
     
     if len(df_filtered) == 0:

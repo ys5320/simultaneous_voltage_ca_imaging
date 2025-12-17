@@ -1,3 +1,6 @@
+'''
+This script is for plotting ts with different scales for voltage and calcium
+'''
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -5,7 +8,8 @@ from pathlib import Path
 from scipy import ndimage
 
 def plot_targeted_cells_timeseries(toxin, trial_string, target_cells, 
-                                   timeseries_dir, save_dir):
+                                   timeseries_dir, save_dir,
+                                   ca_scale_percent=20, voltage_scale_percent=20):
     """
     Plot calcium and voltage timeseries for targeted cells.
     
@@ -21,12 +25,23 @@ def plot_targeted_cells_timeseries(toxin, trial_string, target_cells,
         Directory containing timeseries CSV files
     save_dir : str or Path
         Directory to save output figures
+    ca_scale_percent : float
+        Percentage ΔF/F represented by calcium scale bar (default: 20)
+    voltage_scale_percent : float
+        Percentage ΔF/F represented by voltage scale bar (default: 20)
+        Note: Scale bars are always the same height; lower percentage = bigger signal
     """
     
     # Convert paths to Path objects
     timeseries_dir = Path(timeseries_dir)
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Calculate scaling factors
+    # The scale bar height is fixed. If we want it to represent less % (e.g., 10% instead of 20%),
+    # we need to scale the signal UP so that 10% of the original signal fills the bar height
+    ca_scale_factor = 20.0 / ca_scale_percent
+    voltage_scale_factor = 20.0 / voltage_scale_percent
     
     # Find CSV files matching pattern
     # Find CSV files matching pattern - exclude files with '_post'
@@ -95,15 +110,7 @@ def plot_targeted_cells_timeseries(toxin, trial_string, target_cells,
         cell_y_idx = ca_df.columns.get_loc('cell_y')
         ca_raw_trace = ca_cell_data.iloc[0, cell_y_idx+1:].values.astype(float)
         voltage_raw_trace = voltage_cell_data.iloc[0, cell_y_idx+1:].values.astype(float)
-        '''
-        # DEBUG: Check what we're getting
-        print(f"Cell {cell_id}:")
-        print(f"  cell_y_idx: {cell_y_idx}")
-        print(f"  Columns after cell_y: {ca_df.columns[cell_y_idx+1:].tolist()[:5]}")  
-        print(f"  ca_raw_trace dtype: {ca_raw_trace.dtype}")
-        print(f"  ca_raw_trace shape: {ca_raw_trace.shape}")
-        print(f"  First few values: {ca_raw_trace[:5]}")
-        '''
+        
         # Calculate baseline (median)
         ca_baseline = np.median(ca_raw_trace)
         voltage_baseline = np.median(voltage_raw_trace)
@@ -120,26 +127,25 @@ def plot_targeted_cells_timeseries(toxin, trial_string, target_cells,
         ca_filtered = ndimage.gaussian_filter1d(ca_centered, sigma=gaussian_sigma)
         voltage_filtered = ndimage.gaussian_filter1d(voltage_centered, sigma=gaussian_sigma)
         
+        # Apply scaling factors
+        ca_scaled = ca_filtered * ca_scale_factor
+        voltage_scaled = voltage_filtered * voltage_scale_factor
+        
         # Create time axis
         time_axis = np.arange(len(ca_filtered)) * dt
         
         # Plot calcium trace
-        ax.plot(time_axis, ca_filtered + y_offset, 
+        ax.plot(time_axis, ca_scaled + y_offset, 
                 color=ca_color, linewidth=2, alpha=1.0,
                 label='Ca²⁺ (ΔF/F)' if cell_id == target_cells[0] else '')
         
         # Plot voltage trace
-        ax.plot(time_axis, voltage_filtered + y_offset, 
+        ax.plot(time_axis, voltage_scaled + y_offset, 
                 color=voltage_color, linewidth=2, alpha=1.0,
                 label='Voltage (-ΔF/F)' if cell_id == target_cells[0] else '')
-        '''
-        # Add cell ID label
-        ax.text(-max(time_axis) * 0.02, y_offset, f'Cell {cell_id}',
-                color='black', fontweight='bold', fontsize=12,
-                ha='right', va='center')
-        '''
+        
         # Store traces for scale bar calculation
-        all_traces.extend([ca_filtered + y_offset, voltage_filtered + y_offset])
+        all_traces.extend([ca_scaled + y_offset, voltage_scaled + y_offset])
         
         y_offset += y_spacing
     
@@ -159,34 +165,35 @@ def plot_targeted_cells_timeseries(toxin, trial_string, target_cells,
     ax.text(time_scale_start + time_scale_length/2, scale_bar_y - y_range * 0.05, 
             '100 s', ha='center', va='top', fontsize=14)
     
-    # Y scale bars (colored) - one bar per cell with separate Ca and Voltage labels
-    scale_bar_height = 0.2  # 20% ΔF/F
+    # Y scale bars (colored) - FIXED HEIGHT, represents different percentages
+    scale_bar_height = 0.2  # FIXED height in plot units (always the same)
     scale_bar_x_ca = x_max - 150  # Position calcium scale bar inside plot
     scale_bar_x_voltage = x_max - 100  # Position voltage scale bar inside plot
 
     # Draw scale bars for each cell at their respective y-offsets
+    # Both bars have the SAME HEIGHT but represent different percentages
     y_offset_temp = 0
     for cell_id in target_cells:
-        # Calcium scale bar
+        # Calcium scale bar - FIXED HEIGHT
         ax.plot([scale_bar_x_ca, scale_bar_x_ca], 
                 [y_offset_temp, y_offset_temp + scale_bar_height], 
                 color=ca_color, linewidth=6)
         
-        # Voltage scale bar
+        # Voltage scale bar - SAME FIXED HEIGHT
         ax.plot([scale_bar_x_voltage, scale_bar_x_voltage], 
                 [y_offset_temp, y_offset_temp + scale_bar_height], 
                 color=voltage_color, linewidth=6)
         
         y_offset_temp += y_spacing
 
-    # Add text labels below scale bars
+    # Add text labels below scale bars with actual percentages
     ax.text(scale_bar_x_ca, y_min - y_range * 0.08, 
-            '20%', 
+            f'{ca_scale_percent:.0f}%', 
             ha='center', va='top', fontsize=12, 
             color=ca_color, fontweight='bold')
     
     ax.text(scale_bar_x_voltage, y_min - y_range * 0.08, 
-            '20%', 
+            f'{voltage_scale_percent:.0f}%', 
             ha='center', va='top', fontsize=12, 
             color=voltage_color, fontweight='bold')
     
@@ -231,29 +238,26 @@ if __name__ == "__main__":
     
     toxin = "A01"  
     trial_string = "20250226_slip1_area1"  
-    target_cells = [662,260,320]
-    
-    toxin = "cbx"  
-    trial_string = "20250705_slip6_area1"  
-    target_cells = [15,216,71]
+    target_cells = [662,390,320]
     
     toxin = "TRAM-34"  
     trial_string = "20250526_slip4_area1"  
     target_cells = [158,355,440]
     
-    toxin = 'CBA'
-    trial_string = "20250323_slip1_area1"  
-    target_cells = [129,78,131]
-    
     # Set paths
-    timeseries_dir = Path(r'R:\home\firefly_link\ca_voltage_imaging_working\results_4')
+    timeseries_dir = Path(r'R:\home\firefly_link\ca_voltage_imaging_working\results_1')
     save_dir = Path(r'R:\home\firefly_link\Calcium_Voltage_Imaging\MDA_MB_468\analysis\paper_figures\example_timeseries_toxin')
     
-    # Plot
+    # Plot with custom scales
+    # Both scale bars have the SAME HEIGHT
+    # Setting voltage to 10% makes voltage signals appear 2x bigger
     fig = plot_targeted_cells_timeseries(
         toxin=toxin,
         trial_string=trial_string,
         target_cells=target_cells,
         timeseries_dir=timeseries_dir,
-        save_dir=save_dir
+        save_dir=save_dir,
+        ca_scale_percent=20,      # Ca scale bar (height=0.2) represents 20% ΔF/F
+        voltage_scale_percent=5   # Voltage scale bar (height=0.2) represents 10% ΔF/F
+                                   # So voltage signal is scaled 2x bigger
     )

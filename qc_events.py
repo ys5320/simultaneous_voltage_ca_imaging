@@ -1,6 +1,5 @@
 """
-Simple Command-Line Event QC Tool with Trial Overview
-COMPLETE VERSION: Uses pre-generated plots from event_detection_plots folder
+For debugging only, not to use for offical QC.
 """
 
 import cv2
@@ -26,15 +25,23 @@ class SimpleEventQC:
         self.qc_decisions = {}
         
     def find_trials_from_metadata(self):
-        """Find complete trials with improved file detection"""
+        """Find complete trials with improved file detection - handles _post folders"""
         print("Finding trials from metadata...")
         complete_trials = {}
         incomplete_trials = []
         
         for idx, trial_row in self.df_metadata.iterrows():
             trial_string = trial_row.trial_string
-            trial_pipeline_dir = self.base_results_dir / trial_string
-            trial_video_dir = self.base_results_dir / trial_string
+            expt = trial_row.expt
+            
+            # Determine actual folder name based on expt
+            if '_post' in expt:
+                actual_folder_name = f"{trial_string}_post"
+            else:
+                actual_folder_name = trial_string
+            
+            trial_pipeline_dir = self.base_results_dir / actual_folder_name
+            trial_video_dir = self.base_results_dir / actual_folder_name
             
             if not trial_pipeline_dir.exists() or not trial_video_dir.exists():
                 continue
@@ -48,55 +55,62 @@ class SimpleEventQC:
             voltage_timeseries = [f for f in all_voltage_files if 'events_' not in f.name]
             calcium_timeseries = [f for f in all_calcium_files if 'events_' not in f.name]
             
-            '''
-            print(f"DEBUG: {trial_string} file classification:")
-            print(f"  Voltage events: {[f.name for f in voltage_events]}")
-            print(f"  Calcium events: {[f.name for f in calcium_events]}")
-            print(f"  Voltage timeseries: {[f.name for f in voltage_timeseries]}")
-            print(f"  Calcium timeseries: {[f.name for f in calcium_timeseries]}")
-            '''
-            
             segment_videos = {
                 'voltage': {
-                    'pre': trial_pipeline_dir / f"pre_voltage_{trial_string}.avi",
-                    'post': trial_pipeline_dir / f"post_voltage_{trial_string}.avi",
+                    'pre': trial_pipeline_dir / f"pre_voltage_{actual_folder_name}.avi",
+                    'post': trial_pipeline_dir / f"post_voltage_{actual_folder_name}.avi",
                     'full': trial_pipeline_dir / "enhanced_voltage_video.avi"
                 },
                 'calcium': {
-                    'pre': trial_pipeline_dir / f"pre_calcium_{trial_string}.avi", 
-                    'post': trial_pipeline_dir / f"post_calcium_{trial_string}.avi",
+                    'pre': trial_pipeline_dir / f"pre_calcium_{actual_folder_name}.avi", 
+                    'post': trial_pipeline_dir / f"post_calcium_{actual_folder_name}.avi",
                     'full': trial_pipeline_dir / "enhanced_calcium_video.avi"
                 }
             }
-            '''
-            print(f"  Expected pre voltage: {segment_videos['voltage']['pre']} - exists: {segment_videos['voltage']['pre'].exists()}")
-            print(f"  Expected post voltage: {segment_videos['voltage']['post']} - exists: {segment_videos['voltage']['post'].exists()}")
-            print(f"  Expected full voltage: {segment_videos['voltage']['full']} - exists: {segment_videos['voltage']['full'].exists()}")
-            print(f"  Expected pre calcium: {segment_videos['calcium']['pre']} - exists: {segment_videos['calcium']['pre'].exists()}")
-            print(f"  Expected post calcium: {segment_videos['calcium']['post']} - exists: {segment_videos['calcium']['post'].exists()}")
-            print(f"  Expected full calcium: {segment_videos['calcium']['full']} - exists: {segment_videos['calcium']['full'].exists()}")
-            '''
-            has_voltage_video = (segment_videos['voltage']['full'].exists() or 
-                               (segment_videos['voltage']['pre'].exists() and segment_videos['voltage']['post'].exists()))
-            has_calcium_video = (segment_videos['calcium']['full'].exists() or 
-                               (segment_videos['calcium']['pre'].exists() and segment_videos['calcium']['post'].exists()))
+            
+            # For _post trials, only require post videos. For normal trials, require both pre and post
+            if '_post' in expt or 'condition' in expt:
+                # Post-only trial: just need post videos OR full video
+                has_voltage_video = (
+                    segment_videos['voltage']['full'].exists() or 
+                    segment_videos['voltage']['post'].exists()
+                )
+                has_calcium_video = (
+                    segment_videos['calcium']['full'].exists() or 
+                    segment_videos['calcium']['post'].exists()
+                )
+            else:
+                # Normal trial: need full video OR both pre and post
+                has_voltage_video = (
+                    segment_videos['voltage']['full'].exists() or 
+                    (segment_videos['voltage']['pre'].exists() and segment_videos['voltage']['post'].exists())
+                )
+                has_calcium_video = (
+                    segment_videos['calcium']['full'].exists() or 
+                    (segment_videos['calcium']['pre'].exists() and segment_videos['calcium']['post'].exists())
+                )
             
             if (voltage_events and calcium_events and 
                 voltage_timeseries and calcium_timeseries and 
                 has_voltage_video and has_calcium_video):
                 
-                complete_trials[trial_string] = {
+                # Create unique key to distinguish normal vs _post versions
+                unique_key = actual_folder_name  # Use actual folder name as key
+                
+                complete_trials[unique_key] = {
                     'voltage_events': voltage_events[0],
                     'calcium_events': calcium_events[0],
                     'voltage_timeseries': voltage_timeseries,
                     'calcium_timeseries': calcium_timeseries,
                     'videos': segment_videos,
-                    'trial_row': trial_row
+                    'trial_row': trial_row,
+                    'trial_string': trial_string,  # Store original trial_string
+                    'actual_folder': actual_folder_name  # Store actual folder name
                 }
-                print(f"  ✓ {trial_string}")
+                print(f"  ✓ {trial_string} ({expt}) -> {actual_folder_name}")
             
             else:
-            # Add this debugging
+                # Add this debugging
                 missing_items = []
                 if not voltage_events: missing_items.append("voltage_events")
                 if not calcium_events: missing_items.append("calcium_events") 
@@ -105,7 +119,7 @@ class SimpleEventQC:
                 if not has_voltage_video: missing_items.append("voltage_video")
                 if not has_calcium_video: missing_items.append("calcium_video")
                 
-                incomplete_trials.append((trial_string, f"Missing: {', '.join(missing_items)}"))
+                incomplete_trials.append((f"{trial_string} ({expt})", f"Missing: {', '.join(missing_items)}"))
         
         # Add this at the end
         if incomplete_trials:
@@ -1090,40 +1104,46 @@ class SimpleEventQC:
         
         print(f"Found {len(trials)} complete trials")
         
-        # Check completion for ALL trials in metadata, not just complete ones
-        all_metadata_trials = self.df_metadata['trial_string'].tolist()
+        # Check completion for ALL found trials (using actual folder names as keys)
         completed_trials = []
         remaining_trials = []
-        incomplete_trials = []
         
-        for trial_string in all_metadata_trials:
-            if trial_string in trials:  # Trial has all required files
-                if self.is_trial_complete(trial_string):
-                    completed_trials.append(trial_string)
-                else:
-                    remaining_trials.append(trial_string)
-            else:  # Trial is missing some required files
-                incomplete_trials.append(trial_string)
+        for trial_key in trials.keys():  # trial_key is actual_folder_name
+            if self.is_trial_complete(trial_key):
+                completed_trials.append(trial_key)
+            else:
+                remaining_trials.append(trial_key)
+        
+        # Find incomplete trials (in metadata but not found by find_trials_from_metadata)
+        all_found_trial_strings = set()
+        for trial_data in trials.values():
+            all_found_trial_strings.add(trial_data['trial_string'])
+        
+        all_metadata_trial_strings = set(self.df_metadata['trial_string'].tolist())
+        incomplete_trial_strings = all_metadata_trial_strings - all_found_trial_strings
         
         print(f"Already completed: {len(completed_trials)} trials")
         print(f"Remaining to QC: {len(remaining_trials)} trials")
-        print(f"Incomplete (missing files): {len(incomplete_trials)} trials")
+        print(f"Incomplete (missing files): {len(incomplete_trial_strings)} trials")
         
         if completed_trials:
             print("Completed trials:")
-            for trial in completed_trials:
-                print(f"  ✓ {trial}")
+            for trial_key in completed_trials:
+                # Show the original trial_string for clarity
+                trial_string = trials[trial_key]['trial_string']
+                expt = trials[trial_key]['trial_row'].expt
+                print(f"  ✓ {trial_string} ({expt})")
         
-        if incomplete_trials:
+        if incomplete_trial_strings:
             print("Incomplete trials (missing required files):")
-            for trial in incomplete_trials:
-                print(f"  ✗ {trial}")
+            for trial_string in incomplete_trial_strings:
+                print(f"  ✗ {trial_string}")
                 # Add debugging to show what's missing
-                self.debug_missing_files(trial)
+                self.debug_missing_files(trial_string)
         
         if not remaining_trials:
-            if incomplete_trials:
-                print(f"\nAll processable trials completed! {len(incomplete_trials)} trials have missing files.")
+            if incomplete_trial_strings:
+                print(f"\nAll processable trials completed! {len(incomplete_trial_strings)} trials have missing files.")
             else:
                 print("All trials already completed!")
             
@@ -1136,21 +1156,24 @@ class SimpleEventQC:
         segment_count = 0
         total_segments = len(remaining_trials) * 2 * 2
         
-        for trial_string in remaining_trials:
-            trial_files = trials[trial_string]  # This should exist since we filtered above
+        for trial_key in remaining_trials:  # trial_key is actual_folder_name
+            trial_files = trials[trial_key]
+            trial_string = trial_files['trial_string']  # Get original trial_string
+            expt = trial_files['trial_row'].expt
+            
             print(f"\n{'='*80}")
-            print(f"PROCESSING TRIAL: {trial_string}")
+            print(f"PROCESSING TRIAL: {trial_string} ({expt}) -> {trial_key}")
             print(f"{'='*80}")
             
             trial_completed = True  # Track if all segments for this trial are completed
             
             # Detect available segments for this trial
-            available_segments = self.detect_available_segments(trial_string, trial_files)
-            print(f"Available segments for {trial_string}: {available_segments}")
+            available_segments = self.detect_available_segments(trial_key, trial_files)
+            print(f"Available segments for {trial_key}: {available_segments}")
 
             total_segments_for_trial = len(available_segments) * 2  # voltage + calcium
 
-            for segment_name in available_segments:  # Use detected segments instead of hardcoded ['pre', 'post']
+            for segment_name in available_segments:
                 for data_type in ['voltage', 'calcium']:
                     segment_count += 1
                     
@@ -1159,10 +1182,10 @@ class SimpleEventQC:
                     print(f"{'='*60}")
                     
                     try:
-                        segment_data = self.load_segment_data(trial_string, trial_files, segment_name, data_type)
+                        segment_data = self.load_segment_data(trial_key, trial_files, segment_name, data_type)
                         
                         if segment_data is None:
-                            print(f"Failed to load {trial_string} {segment_name} {data_type}")
+                            print(f"Failed to load {trial_key} {segment_name} {data_type}")
                             trial_completed = False
                             continue
                         
@@ -1175,10 +1198,10 @@ class SimpleEventQC:
                         # QC this segment (with trial overview first)
                         qc_result = self.qc_segment(segment_data)
                         
-                        # Save decision
-                        qc_key = f"{trial_string}_{segment_name}_{data_type}"
+                        # Save decision using trial_key (actual folder name)
+                        qc_key = f"{trial_key}_{segment_name}_{data_type}"
                         self.qc_decisions[qc_key] = {
-                            'trial_string': trial_string,
+                            'trial_string': trial_key,  # Store actual folder name
                             'segment': segment_name,
                             'data_type': data_type,
                             'decision': qc_result['decision'],
@@ -1195,18 +1218,18 @@ class SimpleEventQC:
             # After completing all segments for this trial, create checkpoint
             if trial_completed:
                 print(f"\n{'='*60}")
-                print(f"COMPLETED TRIAL: {trial_string}")
+                print(f"COMPLETED TRIAL: {trial_key}")
                 print(f"{'='*60}")
                 
                 # Apply decisions immediately for this trial
-                self.apply_single_trial_decisions(trial_string)
+                self.apply_single_trial_decisions(trial_key)
                 
                 # Save overall QC results
                 self.save_qc_results()
                 
-                print(f"✓ Checkpoint saved for {trial_string}")
+                print(f"✓ Checkpoint saved for {trial_key}")
             else:
-                print(f"✗ Trial {trial_string} incomplete - will retry next time")
+                print(f"✗ Trial {trial_key} incomplete - will retry next time")
         
         print("\n" + "="*80)
         print("QC SESSION COMPLETE")
@@ -1221,8 +1244,10 @@ class SimpleEventQC:
         
         if final_remaining:
             print("Still need to QC:")
-            for trial in final_remaining:
-                print(f"  - {trial}")
+            for trial_key in final_remaining:
+                trial_string = trials[trial_key]['trial_string']
+                expt = trials[trial_key]['trial_row'].expt
+                print(f"  - {trial_string} ({expt})")
         else:
             print("🎉 ALL TRIALS COMPLETED!")
             
@@ -1482,7 +1507,10 @@ def main():
         df_file = Path(top_dir, 'analysis', 'dataframes', f'long_acqs_{cell_line}_all_before_{date}.csv')
     else:
         top_dir = Path(r"R:\home\firefly_link\Calcium_Voltage_Imaging", f'{cell_line}')
-        df_file = Path(top_dir, 'analysis', 'dataframes', f'MDA_MB_468_dataframe_tc_extracted.csv')
+        #df_file = Path(top_dir, 'analysis', 'dataframes', f'MDA_MB_468_dataframe_tc_extracted.csv')
+        #df_file = Path(top_dir,'analysis', 'dataframes',f'MDA_MB_468_segmented_results4.csv')
+        df_file = Path(top_dir, 'analysis', 'dataframes', f'long_acqs_MDA_MB_468_all.csv')
+        #df_file = Path(top_dir,'analysis', 'dataframes',f'MDA_MB_468_segmented_results5.csv')
     
     # Load metadata
     if not df_file.exists():
@@ -1490,10 +1518,10 @@ def main():
         return
     
     df_raw = pd.read_csv(df_file)
-    df_filtered = df_raw[df_raw['multi_tif'] > 1]
-    df_filtered = df_filtered[df_filtered['use'] != 'n']
-    #df_filtered = df_filtered[df_filtered['expt'] == 'TRAM-34_1uM']
-    df_filtered = df_filtered[df_filtered['expt'].str.contains('siRNA_negative_control', na=False)]
+    #df_filtered = df_raw[df_raw['multi_tif'] > 1]
+    df_filtered = df_raw[df_raw['use'] != 'n_focus']
+    #df_filtered = df_filtered[df_filtered['expt'] == 'Ca_free_post']
+    df_filtered = df_filtered[df_filtered['expt'].str.contains('condition', na=False)]
     df_filtered = df_filtered.reset_index(drop=True)
     
     if len(df_filtered) == 0:
