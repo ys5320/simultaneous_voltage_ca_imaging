@@ -1509,7 +1509,7 @@ def main():
         top_dir = Path(r"R:\home\firefly_link\Calcium_Voltage_Imaging", f'{cell_line}')
         #df_file = Path(top_dir, 'analysis', 'dataframes', f'MDA_MB_468_dataframe_tc_extracted.csv')
         #df_file = Path(top_dir,'analysis', 'dataframes',f'MDA_MB_468_segmented_results4.csv')
-        df_file = Path(top_dir, 'analysis', 'dataframes', f'long_acqs_MDA_MB_468_all.csv')
+        df_file = Path(top_dir, 'analysis', 'dataframes', f'dataframe_controls.csv')
         #df_file = Path(top_dir,'analysis', 'dataframes',f'MDA_MB_468_segmented_results5.csv')
     
     # Load metadata
@@ -1520,8 +1520,8 @@ def main():
     df_raw = pd.read_csv(df_file)
     #df_filtered = df_raw[df_raw['multi_tif'] > 1]
     df_filtered = df_raw[df_raw['use'] != 'n_focus']
-    #df_filtered = df_filtered[df_filtered['expt'] == 'Ca_free_post']
-    df_filtered = df_filtered[df_filtered['expt'].str.contains('condition', na=False)]
+    df_filtered = df_filtered[df_filtered['expt'] == 'exp3ms_bluechannel_only']
+    #df_filtered = df_filtered[df_filtered['expt'].str.contains('condition', na=False)]
     df_filtered = df_filtered.reset_index(drop=True)
     
     if len(df_filtered) == 0:
