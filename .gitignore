@@ -1,0 +1,2 @@
+HPC_scripts/workdir/*.e*
+HPC_scripts/workdir/*.o*
